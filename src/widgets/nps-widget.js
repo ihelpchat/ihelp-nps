@@ -15,6 +15,10 @@
  * </script>
  */
 
+// Definir variáveis globais para garantir que as funções estejam disponíveis
+var NPSWidget;
+var initNPSWidget;
+
 (function (window) {
   'use strict';
 
@@ -696,7 +700,7 @@
   }
 
   // Função principal de inicialização
-  window.initNPSWidget = function(config = {}) {
+  initNPSWidget = window.initNPSWidget = function(config = {}) {
     // Mesclar configuração padrão com a configuração do usuário
     const finalConfig = {...defaultConfig, ...config};
     
@@ -733,6 +737,17 @@
     // Inicializar widget automaticamente
     window.initNPSWidget(config);
   }
+  
+  // Garantir que o script esteja totalmente carregado antes de disponibilizar as funções
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('NPS Widget carregado e pronto para uso.');
+  });
   // ========== FIM DO CÓDIGO DE INSTALAÇÃO ==========
   
 })(window);
+
+// Verificar se as funções estão disponíveis globalmente
+console.log('NPS Widget: Funções globais disponíveis:', {
+  initNPSWidget: typeof initNPSWidget !== 'undefined',
+  iHelpNPS: typeof window.iHelpNPS !== 'undefined'
+});

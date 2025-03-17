@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste do Widget NPS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #ea5f3d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .container {
+            margin-top: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        h1 {
+            color: #333;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Teste do Widget NPS</h1>
+    
+    <div class="container">
+        <h2>Controles</h2>
+        <button id="btnMostrar">Mostrar Widget</button>
+        <button id="btnOcultar">Ocultar Widget</button>
+        <button id="btnReiniciar">Reiniciar Widget</button>
+    </div>
+
+    <div class="container">
+        <h2>Logs</h2>
+        <pre id="logs"></pre>
+    </div>
+
+    <!-- Carregar o widget NPS -->
+    <script src="nps-widget.js"></script>
+    
+    <script>
+        // Função para adicionar logs
+        function log(message) {
+            const logsElement = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logsElement.textContent += `[${timestamp}] ${message}\n`;
+            console.log(message);
+        }
+
+        // Aguardar o carregamento completo da página
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Página carregada');
+            
+            // Verificar se as funções do widget estão disponíveis
+            log(`initNPSWidget disponível: ${typeof window.initNPSWidget !== 'undefined'}`);
+            log(`iHelpNPS disponível: ${typeof window.iHelpNPS !== 'undefined'}`);
+            
+            try {
+                // Inicializar o widget com autoOpen: false
+                log('Tentando inicializar o widget...');
+                const widget = window.initNPSWidget({
+                    autoOpen: false,
+                    primaryColor: '#ea5f3d',
+                    apiUrl: 'https://example.com/api',
+                    apiKey: 'chave-teste'
+                });
+                log('Widget inicializado com sucesso!');
+                
+                // Configurar os botões de controle
+                document.getElementById('btnMostrar').addEventListener('click', function() {
+                    log('Tentando mostrar o widget...');
+                    try {
+                        if (widget && typeof widget.show === 'function') {
+                            widget.show();
+                            log('Método widget.show() chamado');
+                        } else if (window.iHelpNPS && typeof window.iHelpNPS.show === 'function') {
+                            window.iHelpNPS.show();
+                            log('Método window.iHelpNPS.show() chamado');
+                        } else {
+                            log('ERRO: Métodos show não encontrados');
+                        }
+                    } catch (e) {
+                        log(`ERRO ao mostrar widget: ${e.message}`);
+                    }
+                });
+                
+                document.getElementById('btnOcultar').addEventListener('click', function() {
+                    log('Tentando ocultar o widget...');
+                    try {
+                        if (widget && typeof widget.hide === 'function') {
+                            widget.hide();
+                            log('Método widget.hide() chamado');
+                        } else if (window.iHelpNPS && typeof window.iHelpNPS.hide === 'function') {
+                            window.iHelpNPS.hide();
+                            log('Método window.iHelpNPS.hide() chamado');
+                        } else {
+                            log('ERRO: Métodos hide não encontrados');
+                        }
+                    } catch (e) {
+                        log(`ERRO ao ocultar widget: ${e.message}`);
+                    }
+                });
+                
+                document.getElementById('btnReiniciar').addEventListener('click', function() {
+                    log('Reiniciando widget...');
+                    try {
+                        const novoWidget = window.initNPSWidget({
+                            autoOpen: true,
+                            primaryColor: '#ea5f3d',
+                            apiUrl: 'https://example.com/api',
+                            apiKey: 'chave-teste'
+                        });
+                        log('Widget reiniciado com sucesso!');
+                    } catch (e) {
+                        log(`ERRO ao reiniciar widget: ${e.message}`);
+                    }
+                });
+                
+            } catch (e) {
+                log(`ERRO ao inicializar widget: ${e.message}`);
+            }
+        });
+    </script>
+</body>
+</html>
