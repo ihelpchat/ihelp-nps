@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exemplo de Instalação do Widget NPS</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+        
+        h1, h2 {
+            color: #333;
+        }
+        
+        .example-box {
+            background-color: #f5f5f5;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        
+        code {
+            background-color: #e9e9e9;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
+        }
+        
+        pre {
+            background-color: #f1f1f1;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+        }
+        
+        .highlight {
+            color: #ea5f3d;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Como Instalar o Widget NPS em Seu Site</h1>
+    
+    <p>Existem várias maneiras de adicionar o widget NPS ao seu site. Escolha a opção que melhor se adapta às suas necessidades.</p>
+    
+    <h2>Método 1: Instalação Automática</h2>
+    <div class="example-box">
+        <p>Adicione este script ao seu HTML para instalar automaticamente o widget:</p>
+        <pre><code>&lt;script 
+    src="https://seu-dominio.com/install-nps-widget.js" 
+    data-auto-init="true" 
+    data-config='{"userId": "cliente123", "primaryColor": "#ea5f3d"}'
+&gt;&lt;/script&gt;</code></pre>
+        <p>O widget será automaticamente inicializado com as configurações fornecidas.</p>
+    </div>
+    
+    <h2>Método 2: Instalação Manual</h2>
+    <div class="example-box">
+        <p>Adicione o script e inicialize o widget manualmente:</p>
+        <pre><code>&lt;script src="https://seu-dominio.com/install-nps-widget.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+    // Inicializar o widget quando desejar
+    document.getElementById('mostrarFeedback').addEventListener('click', function() {
+        initNPSWidget({
+            userId: 'cliente123',
+            primaryColor: '#ea5f3d',
+            title: 'Como foi sua experiência?'
+        });
+    });
+&lt;/script&gt;</code></pre>
+    </div>
+    
+    <h2>Método 3: Instalação em Elemento Específico</h2>
+    <div class="example-box">
+        <p>Você pode especificar onde o widget deve aparecer:</p>
+        <pre><code>&lt;div id="meu-widget-nps"&gt;&lt;/div&gt;
+
+&lt;script src="https://seu-dominio.com/install-nps-widget.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+    initNPSWidget({
+        targetElementId: 'meu-widget-nps',
+        userId: 'cliente123'
+    });
+&lt;/script&gt;</code></pre>
+    </div>
+    
+    <h2>Opções de Configuração</h2>
+    <div class="example-box">
+        <p>O widget aceita as seguintes opções de configuração:</p>
+        <ul>
+            <li><code>targetElementId</code>: ID do elemento onde o widget será exibido</li>
+            <li><code>userId</code>: Identificador do usuário</li>
+            <li><code>apiUrl</code>: URL da API para enviar os dados</li>
+            <li><code>apiKey</code>: Chave de API para autenticação</li>
+            <li><code>title</code>: Texto da pergunta principal</li>
+            <li><code>feedbackLabel</code>: Texto para o campo de feedback</li>
+            <li><code>submitButtonText</code>: Texto do botão de envio</li>
+            <li><code>thankYouMessage</code>: Mensagem de agradecimento</li>
+            <li><code>primaryColor</code>: Cor principal do widget (código hex)</li>
+            <li><code>maxRating</code>: Valor máximo da avaliação (padrão: 10)</li>
+            <li><code>darkMode</code>: Ativar modo escuro (true/false)</li>
+        </ul>
+    </div>
+    
+    <h2>Manipulação de Dados Personalizada</h2>
+    <div class="example-box">
+        <p>Você pode personalizar como os dados são processados:</p>
+        <pre><code>initNPSWidget({
+    onSubmit: function(data) {
+        // Dados contêm: user_id, score, feedback, created_at
+        console.log('Feedback recebido:', data);
+        
+        // Enviar para seu próprio sistema
+        return fetch('https://seu-sistema.com/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+    }
+});</code></pre>
+    </div>
+    
+    <p class="highlight">Nota: Substitua "https://seu-dominio.com/install-nps-widget.js" pelo caminho real do script em seu servidor.</p>
+    
+    <!-- Exemplo do widget -->
+    <script src="nps-widget.js"></script>
+    <script>
+        // O widget será inicializado quando esta página for carregada
+        document.addEventListener('DOMContentLoaded', function() {
+            window.iHelpNPS.init({
+                targetElementId: 'widget-demo',
+                primaryColor: '#ea5f3d',
+                userId: 'exemplo-usuario',
+                onSubmit: function(data) {
+                    console.log('Feedback enviado:', data);
+                    return Promise.resolve(); // Simular envio bem-sucedido
+                }
+            });
+        });
+    </script>
+    
+    <h2>Demonstração</h2>
+    <div id="widget-demo"></div>
+</body>
+</html>
