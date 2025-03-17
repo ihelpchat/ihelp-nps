@@ -65,9 +65,11 @@ var initNPSWidget;
       this.visible = false;
       this.init();
       
-      // Abrir automaticamente se configurado
+      // Abrir automaticamente com delay de 3 segundos se configurado
       if (this.config.autoOpen) {
-        this.show();
+        setTimeout(() => {
+          this.show();
+        }, 3000);
       }
     }
 
@@ -173,28 +175,29 @@ var initNPSWidget;
         
         .ihelp-nps-rating-container {
           display: flex;
-          flex-wrap: nowrap;
-          overflow-x: auto;
-          gap: 0.5rem;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 0.25rem;
           margin-bottom: 1.5rem;
           padding-bottom: 0.5rem;
-          scrollbar-width: thin;
+          width: 100%;
         }
         
         .ihelp-nps-rating-btn {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 3rem;
-          height: 3rem;
+          width: 2.5rem;
+          height: 2.5rem;
           border-radius: 0.375rem;
           background-color: white;
           border: 1px solid #d1d5db;
           color: #374151;
-          font-size: 1.125rem;
+          font-size: 0.9rem;
           font-weight: 500;
           cursor: pointer;
           transition: all 0.2s ease;
+          margin: 0.15rem;
         }
         
         .ihelp-nps-rating-btn:hover {
@@ -350,14 +353,25 @@ var initNPSWidget;
         
         @media (max-width: 640px) {
           .ihelp-nps-rating-container {
-            justify-content: flex-start;
-            padding-bottom: 1rem;
+            justify-content: center;
+            padding-bottom: 0.5rem;
+            gap: 0.15rem;
           }
           
           .ihelp-nps-rating-btn {
-            min-width: 2.5rem;
-            height: 2.5rem;
-            flex-shrink: 0;
+            width: 2rem;
+            height: 2rem;
+            font-size: 0.85rem;
+            margin: 0.1rem;
+          }
+          
+          .ihelp-nps-card {
+            padding: 1rem;
+          }
+          
+          .ihelp-nps-title {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
           }
         }
         
@@ -615,7 +629,11 @@ var initNPSWidget;
         created_at: new Date().toISOString(),
         website: window.location.hostname || 'unknown',
         category: this.getNPSCategory(this.state.currentRating),
-        session_id: this._sessionId
+        session_id: this._sessionId,
+        business_id: this.config.businessId,
+        profile: this.config.profile,
+        email: this.config.email,
+        url: window.location.href
       };
       
       // Log data for debugging
@@ -690,7 +708,10 @@ var initNPSWidget;
     apiUrl: 'https://cxbvqfhdblmlvrgzuqpd.supabase.co/rest/v1/nps_feedback',
     apiKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4YnZxZmhkYmxtbHZyZ3p1cXBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIyMTY2MjAsImV4cCI6MjA1Nzc5MjYyMH0.7Jrl8_qtkjExzC98QWn1Fl2fVcXNL_E0y-_NTxhSLrc',
     primaryColor: '#ea5f3d',
-    autoOpen: true
+    autoOpen: true,
+    businessId: null,
+    profile: null,
+    email: null
   };
 
   // Função para criar o container do widget
@@ -708,8 +729,9 @@ var initNPSWidget;
           const container = document.createElement('div');
           container.id = tempId;
           container.style.position = 'fixed';
-          container.style.bottom = '20px';
-          container.style.right = '20px';
+          container.style.top = '50%';
+          container.style.left = '50%';
+          container.style.transform = 'translate(-50%, -50%)';
           container.style.zIndex = '9999';
           document.body.appendChild(container);
           console.log('NPS Widget: Container criado com sucesso após aguardar o DOM.');
@@ -725,8 +747,9 @@ var initNPSWidget;
     const container = document.createElement('div');
     container.id = 'ihelp-nps-widget';
     container.style.position = 'fixed';
-    container.style.bottom = '20px';
-    container.style.right = '20px';
+    container.style.top = '50%';
+    container.style.left = '50%';
+    container.style.transform = 'translate(-50%, -50%)';
     container.style.zIndex = '9999';
     document.body.appendChild(container);
     return container.id;
