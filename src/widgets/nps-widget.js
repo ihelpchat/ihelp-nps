@@ -689,6 +689,33 @@ var initNPSWidget;
 
   // Função para criar o container do widget
   function createWidgetContainer() {
+    // Verificar se document.body existe
+    if (!document.body) {
+      console.warn('NPS Widget: document.body não está disponível ainda. Aguardando o DOM carregar...');
+      
+      // Retornar um ID temporário e agendar a criação do container quando o DOM estiver pronto
+      const tempId = 'ihelp-nps-widget';
+      
+      // Usar setTimeout para tentar novamente após o DOM estar carregado
+      setTimeout(function() {
+        if (document.body) {
+          const container = document.createElement('div');
+          container.id = tempId;
+          container.style.position = 'fixed';
+          container.style.bottom = '20px';
+          container.style.right = '20px';
+          container.style.zIndex = '9999';
+          document.body.appendChild(container);
+          console.log('NPS Widget: Container criado com sucesso após aguardar o DOM.');
+        } else {
+          console.error('NPS Widget: document.body ainda não está disponível após aguardar.');
+        }
+      }, 100);
+      
+      return tempId;
+    }
+    
+    // Caso document.body exista, criar o container normalmente
     const container = document.createElement('div');
     container.id = 'ihelp-nps-widget';
     container.style.position = 'fixed';
@@ -704,43 +731,106 @@ var initNPSWidget;
     // Mesclar configuração padrão com a configuração do usuário
     const finalConfig = {...defaultConfig, ...config};
     
-    // Criar container se não for especificado
-    if (!finalConfig.targetElementId) {
-      finalConfig.targetElementId = createWidgetContainer();
-    }
+    // Verificar se o DOM está pronto para manipulação
+    const initWidget = function() {
+      // Criar container se não for especificado
+      if (!finalConfig.targetElementId) {
+        finalConfig.targetElementId = createWidgetContainer();
+      }
+      
+      // Inicializar o widget diretamente
+      if (window.iHelpNPS) {
+        return window.iHelpNPS.init(finalConfig);
+      } else {
+        console.error('Erro ao inicializar o widget NPS: iHelpNPS não está definido.');
+        return null;
+      }
+    };
     
-    // Inicializar o widget diretamente
-    if (window.iHelpNPS) {
-      window.iHelpNPS.init(finalConfig);
+    // Se o documento já estiver carregado, inicializar imediatamente
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      return initWidget();
     } else {
-      console.error('Erro ao inicializar o widget NPS: iHelpNPS não está definido.');
+      // Caso contrário, aguardar o carregamento do DOM
+      console.log('NPS Widget: Aguardando o DOM carregar completamente...');
+      
+      // Criar um objeto temporário com métodos show/hide que serão chamados quando o widget for inicializado
+      const tempWidget = {
+        _pendingShow: false,
+        _pendingHide: false,
+        _realWidget: null,
+        
+        show: function() {
+          this._pendingShow = true;
+          if (this._realWidget) {
+            this._realWidget.show();
+          }
+        },
+        
+        hide: function() {
+          this._pendingHide = true;
+          if (this._realWidget) {
+            this._realWidget.hide();
+          }
+        }
+      };
+      
+      // Inicializar o widget quando o DOM estiver pronto
+      document.addEventListener('DOMContentLoaded', function() {
+        tempWidget._realWidget = initWidget();
+        
+        // Aplicar ações pendentes
+        if (tempWidget._pendingShow) {
+          tempWidget._realWidget.show();
+        } else if (tempWidget._pendingHide) {
+          tempWidget._realWidget.hide();
+        }
+      });
+      
+      return tempWidget;
     }
   };
   
-  // Auto-inicializar se o atributo data-auto-init estiver presente no script
-  const scripts = document.getElementsByTagName('script');
-  const currentScript = scripts[scripts.length - 1];
-  
-  if (currentScript.getAttribute('data-auto-init') === 'true') {
-    // Extrair configuração do atributo data-config
-    let config = {};
-    const configAttr = currentScript.getAttribute('data-config');
+  // Função para inicialização segura em ambientes React
+  function safeInitForReact() {
+    // Auto-inicializar se o atributo data-auto-init estiver presente no script
+    const scripts = document.getElementsByTagName('script');
+    const currentScript = scripts[scripts.length - 1];
     
-    if (configAttr) {
-      try {
-        config = JSON.parse(configAttr);
-      } catch (e) {
-        console.error('Erro ao analisar configuração do widget NPS:', e);
+    if (currentScript && currentScript.getAttribute('data-auto-init') === 'true') {
+      // Extrair configuração do atributo data-config
+      let config = {};
+      const configAttr = currentScript.getAttribute('data-config');
+      
+      if (configAttr) {
+        try {
+          config = JSON.parse(configAttr);
+        } catch (e) {
+          console.error('Erro ao analisar configuração do widget NPS:', e);
+        }
       }
+      
+      // Inicializar widget automaticamente com segurança
+      window.initNPSWidget(config);
     }
-    
-    // Inicializar widget automaticamente
-    window.initNPSWidget(config);
+  }
+  
+  // Tentar inicializar com segurança
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    safeInitForReact();
+  } else {
+    // Aguardar o DOM estar pronto para inicializar
+    document.addEventListener('DOMContentLoaded', safeInitForReact);
   }
   
   // Garantir que o script esteja totalmente carregado antes de disponibilizar as funções
   document.addEventListener('DOMContentLoaded', function() {
     console.log('NPS Widget carregado e pronto para uso.');
+  });
+  
+  // Adicionar um evento para quando a janela estiver totalmente carregada (para React)
+  window.addEventListener('load', function() {
+    console.log('NPS Widget: Janela totalmente carregada, garantindo compatibilidade com React.');
   });
   // ========== FIM DO CÓDIGO DE INSTALAÇÃO ==========
   
@@ -751,3 +841,21 @@ console.log('NPS Widget: Funções globais disponíveis:', {
   initNPSWidget: typeof initNPSWidget !== 'undefined',
   iHelpNPS: typeof window.iHelpNPS !== 'undefined'
 });
+
+// Adicionar uma função auxiliar para uso em React
+window.reactInitNPSWidget = function(config) {
+  // Garantir que o DOM esteja pronto antes de inicializar
+  if (document.body) {
+    return window.initNPSWidget(config);
+  } else {
+    console.log('React NPS Widget: Aguardando o DOM estar pronto...');
+    return new Promise((resolve) => {
+      const checkAndInit = setInterval(() => {
+        if (document.body) {
+          clearInterval(checkAndInit);
+          resolve(window.initNPSWidget(config));
+        }
+      }, 50);
+    });
+  }
+};
