@@ -14,4 +14,10 @@ eslint.config.js
 README.md
 .DS_Store
 supabase
-src
+src/lib
+src/pages
+src/vite-env.d.ts
+src/main.tsx
+src/index.css
+src/App.tsx
+src/widgets/nps-widget-demo.html
