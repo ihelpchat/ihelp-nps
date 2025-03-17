@@ -1,0 +1,17 @@
+node_modules
+tsconfig.json
+.bolt
+vite.widget.config.ts
+vite.config.ts
+tsconfig.node.json
+tsconfig.app.json
+tailwind.config.js
+postcss.config.js
+package.json
+package-lock.json
+index.html
+eslint.config.js
+README.md
+.DS_Store
+supabase
+src
