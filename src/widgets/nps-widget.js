@@ -153,6 +153,7 @@ var initNPSWidget;
         
         .ihelp-nps-progress {
           height: 0.5rem;
+          margin-top: 1.5rem;
           margin-bottom: 1.5rem;
           background-color: #e5e7eb;
           border-radius: 9999px;
@@ -351,6 +352,42 @@ var initNPSWidget;
           display: none;
         }
         
+        .ihelp-nps-close-btn {
+          position: absolute;
+          top: 16px;
+          right: 16px;
+          width: 28px;
+          height: 28px;
+          background: none;
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+          z-index: 10;
+          padding: 0;
+        }
+        
+        .ihelp-nps-close-btn:hover {
+          background: none;
+        }
+        
+        .ihelp-nps-close-btn.visible {
+          opacity: 1;
+        }
+        
+        .ihelp-nps-close-btn img {
+          width: 16px;
+          height: 16px;
+          opacity: 0.7;
+        }
+        
+        .ihelp-nps-close-btn:hover img {
+          opacity: 1;
+        }
+        
         @media (max-width: 640px) {
           .ihelp-nps-rating-container {
             justify-content: center;
@@ -439,6 +476,9 @@ var initNPSWidget;
         // Render thank you state
         wrapper.innerHTML = `
           <div class="ihelp-nps-card">
+            <button class="ihelp-nps-close-btn ihelp-nps-hide" aria-label="Fechar">
+              <img src="https://img.icons8.com/ios-glyphs/30/delete-sign.png" alt="Fechar" width="16" height="16">
+            </button>
             <div class="ihelp-nps-thank-you">
               <div class="ihelp-nps-thank-you-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -457,6 +497,9 @@ var initNPSWidget;
         // Render rating or feedback step
         wrapper.innerHTML = `
           <div class="ihelp-nps-card">
+            <button class="ihelp-nps-close-btn ihelp-nps-hide" aria-label="Fechar">
+              <img src="https://img.icons8.com/ios-glyphs/30/delete-sign.png" alt="Fechar" width="16" height="16">
+            </button>
             <div class="ihelp-nps-progress">
               <div class="ihelp-nps-progress-bar" style="width: ${showFeedback ? '100' : '50'}%"></div>
             </div>
@@ -502,6 +545,16 @@ var initNPSWidget;
       
       // Add event listeners after rendering
       this.addEventListeners();
+      
+      // Adicionar evento de clique para o botão de fechar
+      const closeBtn = wrapper.querySelector('.ihelp-nps-close-btn');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.hide();
+        });
+      }
     }
     
     // Render the rating buttons based on maxRating
@@ -694,11 +747,31 @@ var initNPSWidget;
   NPSWidget.prototype.show = function() {
     this.visible = true;
     this.targetElement.style.display = 'block';
+    
+    // Mostrar o botão de fechar após 5 segundos
+    setTimeout(() => {
+      if (this.widgetElement) {
+        const closeBtn = this.widgetElement.querySelector('.ihelp-nps-close-btn');
+        if (closeBtn) {
+          closeBtn.classList.remove('ihelp-nps-hide');
+          closeBtn.classList.add('visible');
+        }
+      }
+    }, 5000);
   };
   
   NPSWidget.prototype.hide = function() {
     this.visible = false;
     this.targetElement.style.display = 'none';
+    
+    // Esconder o botão de fechar também
+    if (this.widgetElement) {
+      const closeBtn = this.widgetElement.querySelector('.ihelp-nps-close-btn');
+      if (closeBtn) {
+        closeBtn.classList.remove('visible');
+        closeBtn.classList.add('ihelp-nps-hide');
+      }
+    }
   };
   
   // ========== CÓDIGO DE INSTALAÇÃO ==========
@@ -729,9 +802,9 @@ var initNPSWidget;
           const container = document.createElement('div');
           container.id = tempId;
           container.style.position = 'fixed';
-          container.style.top = '50%';
+          container.style.bottom = '20px';
           container.style.left = '50%';
-          container.style.transform = 'translate(-50%, -50%)';
+          container.style.transform = 'translateX(-50%)';
           container.style.zIndex = '9999';
           document.body.appendChild(container);
           console.log('NPS Widget: Container criado com sucesso após aguardar o DOM.');
@@ -747,9 +820,9 @@ var initNPSWidget;
     const container = document.createElement('div');
     container.id = 'ihelp-nps-widget';
     container.style.position = 'fixed';
-    container.style.top = '50%';
+    container.style.bottom = '20px';
     container.style.left = '50%';
-    container.style.transform = 'translate(-50%, -50%)';
+    container.style.transform = 'translateX(-50%)';
     container.style.zIndex = '9999';
     document.body.appendChild(container);
     return container.id;
