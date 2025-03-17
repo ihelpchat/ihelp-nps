@@ -603,13 +603,19 @@ var initNPSWidget;
     
     // Submit feedback to the API
     async submitFeedback() {
+      // Gerar um ID de sessão se não existir
+      if (!this._sessionId) {
+        this._sessionId = 'nps_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+      }
+      
       const data = {
         user_id: this.config.userId,
         score: this.state.currentRating,
         feedback: this.state.feedback,
         created_at: new Date().toISOString(),
         website: window.location.hostname || 'unknown',
-        category: this.getNPSCategory(this.state.currentRating)
+        category: this.getNPSCategory(this.state.currentRating),
+        session_id: this._sessionId
       };
       
       // Log data for debugging
@@ -681,8 +687,8 @@ var initNPSWidget;
   // Configuração padrão para instalação
   const defaultConfig = {
     userId: 'anonymous',
-    apiUrl: 'https://your-supabase-url.supabase.co/rest/v1/nps_feedback',
-    apiKey: '',
+    apiUrl: 'https://cxbvqfhdblmlvrgzuqpd.supabase.co/rest/v1/nps_feedback',
+    apiKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4YnZxZmhkYmxtbHZyZ3p1cXBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIyMTY2MjAsImV4cCI6MjA1Nzc5MjYyMH0.7Jrl8_qtkjExzC98QWn1Fl2fVcXNL_E0y-_NTxhSLrc',
     primaryColor: '#ea5f3d',
     autoOpen: true
   };
