@@ -3,6 +3,16 @@
  * 
  * A lightweight, embeddable NPS (Net Promoter Score) widget
  * that can be added to any website with a simple script tag.
+ * 
+ * Exemplo de uso:
+ * <script src="nps-widget.js"></script>
+ * <script>
+ *   initNPSWidget({
+ *     apiUrl: 'https://sua-url-supabase.supabase.co/rest/v1/nps_feedback',
+ *     apiKey: 'sua-chave-api',
+ *     primaryColor: '#ea5f3d'
+ *   });
+ * </script>
  */
 
 (function (window) {
@@ -33,7 +43,8 @@
         primaryColor: options.primaryColor || '#ea5f3d',
         maxRating: options.maxRating || 10,
         onSubmit: options.onSubmit || null,
-        darkMode: options.darkMode || false
+        darkMode: options.darkMode || false,
+        autoOpen: options.autoOpen || false
       };
 
       // Widget state
@@ -47,7 +58,13 @@
 
       // Create the widget container
       this.widgetElement = null;
+      this.visible = false;
       this.init();
+      
+      // Abrir automaticamente se configurado
+      if (this.config.autoOpen) {
+        this.show();
+      }
     }
 
     // Verifica se o widget deve ser pulado com base no localStorage
@@ -89,6 +106,11 @@
       
       // Add the styles to the document
       this.addStyles();
+      
+      // Inicialmente oculto, a menos que autoOpen seja true
+      if (!this.config.autoOpen) {
+        this.hide();
+      }
     }
 
     // Add CSS styles to the document
@@ -444,7 +466,7 @@
               <label class="ihelp-nps-feedback-label">${this.config.feedbackLabel}</label>
               <textarea 
                 class="ihelp-nps-feedback-textarea" 
-                placeholder="Seu feedback (Opcional)"
+                placeholder="Descreva aqui..."
                 id="ihelp-nps-feedback"
                 rows="4"
               ></textarea>
@@ -629,7 +651,88 @@
   window.iHelpNPS = {
     init: function(options) {
       return new NPSWidget(options);
+    },
+    show: function() {
+      const widget = document.getElementById('ihelp-nps-widget');
+      if (widget) widget.style.display = 'block';
+    },
+    hide: function() {
+      const widget = document.getElementById('ihelp-nps-widget');
+      if (widget) widget.style.display = 'none';
     }
   };
+  
+  // Adicionar métodos de mostrar/ocultar ao protótipo do NPSWidget
+  NPSWidget.prototype.show = function() {
+    this.visible = true;
+    this.targetElement.style.display = 'block';
+  };
+  
+  NPSWidget.prototype.hide = function() {
+    this.visible = false;
+    this.targetElement.style.display = 'none';
+  };
+  
+  // ========== CÓDIGO DE INSTALAÇÃO ==========
+  // Configuração padrão para instalação
+  const defaultConfig = {
+    userId: 'anonymous',
+    apiUrl: 'https://your-supabase-url.supabase.co/rest/v1/nps_feedback',
+    apiKey: '',
+    primaryColor: '#ea5f3d',
+    autoOpen: true
+  };
+
+  // Função para criar o container do widget
+  function createWidgetContainer() {
+    const container = document.createElement('div');
+    container.id = 'ihelp-nps-widget';
+    container.style.position = 'fixed';
+    container.style.bottom = '20px';
+    container.style.right = '20px';
+    container.style.zIndex = '9999';
+    document.body.appendChild(container);
+    return container.id;
+  }
+
+  // Função principal de inicialização
+  window.initNPSWidget = function(config = {}) {
+    // Mesclar configuração padrão com a configuração do usuário
+    const finalConfig = {...defaultConfig, ...config};
+    
+    // Criar container se não for especificado
+    if (!finalConfig.targetElementId) {
+      finalConfig.targetElementId = createWidgetContainer();
+    }
+    
+    // Inicializar o widget diretamente
+    if (window.iHelpNPS) {
+      window.iHelpNPS.init(finalConfig);
+    } else {
+      console.error('Erro ao inicializar o widget NPS: iHelpNPS não está definido.');
+    }
+  };
+  
+  // Auto-inicializar se o atributo data-auto-init estiver presente no script
+  const scripts = document.getElementsByTagName('script');
+  const currentScript = scripts[scripts.length - 1];
+  
+  if (currentScript.getAttribute('data-auto-init') === 'true') {
+    // Extrair configuração do atributo data-config
+    let config = {};
+    const configAttr = currentScript.getAttribute('data-config');
+    
+    if (configAttr) {
+      try {
+        config = JSON.parse(configAttr);
+      } catch (e) {
+        console.error('Erro ao analisar configuração do widget NPS:', e);
+      }
+    }
+    
+    // Inicializar widget automaticamente
+    window.initNPSWidget(config);
+  }
+  // ========== FIM DO CÓDIGO DE INSTALAÇÃO ==========
   
 })(window);
