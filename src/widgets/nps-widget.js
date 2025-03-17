@@ -648,6 +648,11 @@ var initNPSWidget;
           this.state.loading = false;
           this.render();
           
+          // Fechar o widget automaticamente após 4 segundos
+          setTimeout(() => {
+            this.hide();
+          }, 4000);
+          
           // Salvar no localStorage para não mostrar novamente por um tempo
           if (window.localStorage) {
             window.localStorage.setItem('ihelp_nps_submitted', Date.now().toString());
