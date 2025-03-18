@@ -112,17 +112,17 @@ var initNPSWidget;
           // Adicionar filtros baseados nos dados disponíveis
           const filters = [];
           
-          if (this.config.email) {
-            filters.push(`email.eq.${encodeURIComponent(this.config.email)}`);
-          }
+          // if (this.config.email) {
+          //   filters.push(`email.eq.${encodeURIComponent(this.config.email)}`);
+          // }
           
           if (this.config.userId !== 'anonymous') {
-            filters.push(`user_id.eq.${encodeURIComponent(this.config.userId)}`);
+            filters.push(`user_id=eq.${encodeURIComponent(this.config.userId)}`);
           }
           
-          if (this.config.businessId) {
-            filters.push(`business_id.eq.${encodeURIComponent(this.config.businessId)}`);
-          }
+          // if (this.config.businessId) {
+          //   filters.push(`business_id.eq.${encodeURIComponent(this.config.businessId)}`);
+          // }
           
           // Adicionar os filtros à URL
           if (filters.length > 0) {
@@ -1242,11 +1242,15 @@ console.log('NPS Widget: Funções globais disponíveis:', {
 window.reactInitNPSWidget = function(config) {
   // Garantir que o DOM esteja pronto antes de inicializar
   if (document.body) {
-    // Criar uma instância temporária para verificar se o widget deve ser pulado
-    const tempConfig = Object.assign({}, defaultConfig, config);
+    // Usar initNPSWidget para criar uma instância temporária para verificar
+    // se o widget deve ser pulado, já que NPSWidget pode não estar acessível diretamente
+    const tempConfig = Object.assign({}, config);
     
-    // Verificar no Supabase se o widget deve ser pulado antes de inicializar
-    const tempWidget = new NPSWidget(tempConfig);
+    // Inicializar o widget com autoOpen: false para não exibir imediatamente
+    tempConfig.autoOpen = false;
+    
+    // Usar a função global para criar o widget
+    const tempWidget = window.initNPSWidget(tempConfig);
     
     // Retornar uma Promise que só inicializa o widget se não deve ser pulado
     return new Promise((resolve) => {
@@ -1254,7 +1258,10 @@ window.reactInitNPSWidget = function(config) {
         if (shouldSkip) {
           console.log('React NPS Widget: Widget será pulado com base em critérios definidos.');
           // Retornar uma instância do widget que não será exibida
-          const hiddenWidget = new NPSWidget(tempConfig);
+          // Passar a flag shouldSkip para a configuração
+          const skipConfig = Object.assign({}, config, { shouldSkip: true });
+          // Usar a função global para criar o widget
+          const hiddenWidget = window.initNPSWidget(skipConfig);
           hiddenWidget.state.shouldSkip = true;
           resolve(hiddenWidget);
         } else {
