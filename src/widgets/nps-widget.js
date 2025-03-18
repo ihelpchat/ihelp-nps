@@ -57,26 +57,32 @@ var initNPSWidget;
         feedback: '',
         submitted: false,
         loading: false,
-        error: null
+        error: null,
+        shouldSkip: false // Flag para controlar se o widget deve ser pulado
       };
 
-      // Criar o container do widget
+      // Criar o container do widget mas mantê-lo oculto até verificarmos se deve ser exibido
       this.widgetElement = null;
       this.visible = false;
       this.init();
       
       // Verificar se o widget já foi respondido recentemente
+      // NÃO mostrar o widget até que esta verificação seja concluída
       this.shouldSkipWidget().then(shouldSkip => {
-        if (window.localStorage && shouldSkip) {
+        this.state.shouldSkip = shouldSkip;
+        
+        if (shouldSkip) {
           console.log('Widget NPS será pulado com base em critérios definidos.');
-          // Mesmo que o widget seja pulado, ele já está inicializado e oculto
           return;
         }
         
         // Se autoOpen estiver habilitado, mostrar o widget após 3 segundos
         if (this.config.autoOpen) {
           setTimeout(() => {
-            this.show();
+            // Verificar novamente antes de mostrar
+            if (!this.state.shouldSkip) {
+              this.show();
+            }
           }, 3000);
         }
       });
@@ -939,25 +945,41 @@ var initNPSWidget;
   
   // Adicionar métodos de mostrar/ocultar ao protótipo do NPSWidget
   NPSWidget.prototype.show = function() {
+    // Verificar se o widget deve ser pulado
+    if (this.state.shouldSkip) {
+      console.log('Widget NPS não será exibido porque foi marcado para ser pulado.');
+      return;
+    }
+    
     // Verificar se o elemento existe antes de tentar acessá-lo
     if (!this.targetElement) {
       console.error('Erro ao mostrar widget: O elemento alvo não existe.');
       return;
     }
     
-    this.visible = true;
-    this.targetElement.style.display = 'block';
-    
-    // Mostrar o botão de fechar após 5 segundos
-    setTimeout(() => {
-      if (this.widgetElement) {
-        const closeBtn = this.widgetElement.querySelector('.ihelp-nps-close-btn');
-        if (closeBtn) {
-          closeBtn.classList.remove('ihelp-nps-hide');
-          closeBtn.classList.add('visible');
-        }
+    // Verificar novamente no Supabase antes de exibir
+    this.shouldSkipWidget().then(shouldSkip => {
+      if (shouldSkip) {
+        this.state.shouldSkip = true;
+        console.log('Widget NPS não será exibido após verificação adicional.');
+        return;
       }
-    }, 5000);
+      
+      // Agora sim podemos exibir o widget
+      this.visible = true;
+      this.targetElement.style.display = 'block';
+      
+      // Mostrar o botão de fechar após 5 segundos
+      setTimeout(() => {
+        if (this.widgetElement) {
+          const closeBtn = this.widgetElement.querySelector('.ihelp-nps-close-btn');
+          if (closeBtn) {
+            closeBtn.classList.remove('ihelp-nps-hide');
+            closeBtn.classList.add('visible');
+          }
+        }
+      }, 5000);
+    });
   };
   
   NPSWidget.prototype.hide = function() {
