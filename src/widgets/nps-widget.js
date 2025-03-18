@@ -1113,6 +1113,14 @@ var initNPSWidget;
     
     // Verificar se o DOM está pronto para manipulação
     const initWidget = function() {
+      // Verificar se o widget já foi marcado para ser pulado
+      if (config.shouldSkip === true) {
+        console.log('initNPSWidget: Widget já foi marcado para ser pulado.');
+        // Criar uma instância que não será exibida
+        const hiddenWidget = new NPSWidget(finalConfig);
+        hiddenWidget.state.shouldSkip = true;
+        return hiddenWidget;
+      }
       // Criar container se não for especificado
       if (!finalConfig.targetElementId) {
         finalConfig.targetElementId = createWidgetContainer();
@@ -1234,14 +1242,39 @@ console.log('NPS Widget: Funções globais disponíveis:', {
 window.reactInitNPSWidget = function(config) {
   // Garantir que o DOM esteja pronto antes de inicializar
   if (document.body) {
-    return window.initNPSWidget(config);
+    // Criar uma instância temporária para verificar se o widget deve ser pulado
+    const tempConfig = Object.assign({}, defaultConfig, config);
+    
+    // Verificar no Supabase se o widget deve ser pulado antes de inicializar
+    const tempWidget = new NPSWidget(tempConfig);
+    
+    // Retornar uma Promise que só inicializa o widget se não deve ser pulado
+    return new Promise((resolve) => {
+      tempWidget.shouldSkipWidget().then(shouldSkip => {
+        if (shouldSkip) {
+          console.log('React NPS Widget: Widget será pulado com base em critérios definidos.');
+          // Retornar uma instância do widget que não será exibida
+          const hiddenWidget = new NPSWidget(tempConfig);
+          hiddenWidget.state.shouldSkip = true;
+          resolve(hiddenWidget);
+        } else {
+          // Se não deve ser pulado, inicializar normalmente
+          resolve(window.initNPSWidget(config));
+        }
+      }).catch(error => {
+        console.error('Erro ao verificar se o widget deve ser pulado:', error);
+        // Em caso de erro, inicializar normalmente
+        resolve(window.initNPSWidget(config));
+      });
+    });
   } else {
     console.log('React NPS Widget: Aguardando o DOM estar pronto...');
     return new Promise((resolve) => {
       const checkAndInit = setInterval(() => {
         if (document.body) {
           clearInterval(checkAndInit);
-          resolve(window.initNPSWidget(config));
+          // Chamar a própria função quando o DOM estiver pronto
+          resolve(window.reactInitNPSWidget(config));
         }
       }, 50);
     });
