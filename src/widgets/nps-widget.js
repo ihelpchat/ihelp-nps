@@ -48,7 +48,11 @@ var initNPSWidget;
         maxRating: options.maxRating || 10,
         onSubmit: options.onSubmit || null,
         darkMode: options.darkMode || false,
-        autoOpen: options.autoOpen || false
+        autoOpen: options.autoOpen || false,
+        // Adicionar suporte para os novos parâmetros
+        businessId: options.businessId || null,
+        profile: options.profile || null,
+        email: options.email || null
       };
 
       // Widget state
