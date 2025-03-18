@@ -746,7 +746,8 @@ var initNPSWidget;
         closeBtn.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          this.hide();
+          // Passar true para indicar que foi fechado pelo usuário
+          this.hide(true);
         });
       }
     }
@@ -982,13 +983,17 @@ var initNPSWidget;
     });
   };
   
-  NPSWidget.prototype.hide = function() {
+  NPSWidget.prototype.hide = function(userInitiated = false) {
     // Verificar se o elemento existe antes de tentar acessá-lo
     if (!this.targetElement) {
       console.error('Erro ao ocultar widget: O elemento alvo não existe.');
       return;
     }
     
+    // Verificar se o widget estava realmente visível antes
+    const wasVisible = this.visible;
+    
+    // Agora ocultamos o widget
     this.visible = false;
     this.targetElement.style.display = 'none';
     
@@ -1001,8 +1006,12 @@ var initNPSWidget;
       }
     }
     
-    // Registrar o fechamento no banco de dados e no localStorage
-    if (!this.state.submitted) {
+    // Só registrar o fechamento se:
+    // 1. O widget estava realmente visível antes
+    // 2. Foi fechado pelo usuário OU após o envio do feedback
+    if (wasVisible && (userInitiated || this.state.submitted)) {
+      console.log('Registrando fechamento do widget' + (userInitiated ? ' (iniciado pelo usuário)' : ''));
+      
       // Salvar no localStorage como fallback
       if (window.localStorage) {
         window.localStorage.setItem('ihelp_nps_closed', Date.now().toString());
@@ -1024,7 +1033,7 @@ var initNPSWidget;
       // Tabela para registrar fechamentos do widget
       const closedWidgetTableUrl = this.config.apiUrl.replace('nps_feedback', 'nps_widget_closed');
       
-      // Preparar os dados para envio
+      // Preparar os dados para envio - apenas com os campos que existem na tabela
       const data = {
         user_id: this.config.userId,
         closed_at: new Date().toISOString(),
@@ -1242,6 +1251,9 @@ console.log('NPS Widget: Funções globais disponíveis:', {
 window.reactInitNPSWidget = function(config) {
   // Garantir que o DOM esteja pronto antes de inicializar
   if (document.body) {
+    // Salvar a configuração original de autoOpen para uso posterior
+    const originalAutoOpen = !!config.autoOpen;
+    
     // Usar initNPSWidget para criar uma instância temporária para verificar
     // se o widget deve ser pulado, já que NPSWidget pode não estar acessível diretamente
     const tempConfig = Object.assign({}, config);
@@ -1259,19 +1271,52 @@ window.reactInitNPSWidget = function(config) {
           console.log('React NPS Widget: Widget será pulado com base em critérios definidos.');
           // Retornar uma instância do widget que não será exibida
           // Passar a flag shouldSkip para a configuração
-          const skipConfig = Object.assign({}, config, { shouldSkip: true });
+          const skipConfig = Object.assign({}, config, { shouldSkip: true, autoOpen: false });
           // Usar a função global para criar o widget
           const hiddenWidget = window.initNPSWidget(skipConfig);
           hiddenWidget.state.shouldSkip = true;
           resolve(hiddenWidget);
         } else {
-          // Se não deve ser pulado, inicializar normalmente
-          resolve(window.initNPSWidget(config));
+          // Se não deve ser pulado, inicializar normalmente com autoOpen: false
+          // para controlar manualmente a exibição
+          const widgetConfig = Object.assign({}, config, { autoOpen: false });
+          const widget = window.initNPSWidget(widgetConfig);
+          
+          // Se autoOpen estava habilitado na configuração original, mostrar o widget após 3 segundos
+          if (originalAutoOpen) {
+            console.log('React NPS Widget: autoOpen habilitado, exibindo widget em 3 segundos...');
+            setTimeout(() => {
+              if (widget && typeof widget.show === 'function') {
+                console.log('React NPS Widget: Chamando show() explicitamente');
+                widget.show();
+              } else {
+                console.error('React NPS Widget: Não foi possível chamar o método show() do widget');
+              }
+            }, 3000);
+          }
+          
+          resolve(widget);
         }
       }).catch(error => {
         console.error('Erro ao verificar se o widget deve ser pulado:', error);
-        // Em caso de erro, inicializar normalmente
-        resolve(window.initNPSWidget(config));
+        // Em caso de erro, inicializar normalmente com autoOpen: false
+        const widgetConfig = Object.assign({}, config, { autoOpen: false });
+        const widget = window.initNPSWidget(widgetConfig);
+        
+        // Se autoOpen estava habilitado na configuração original, mostrar o widget após 3 segundos
+        if (originalAutoOpen) {
+          console.log('React NPS Widget: autoOpen habilitado (após erro), exibindo widget em 3 segundos...');
+          setTimeout(() => {
+            if (widget && typeof widget.show === 'function') {
+              console.log('React NPS Widget: Chamando show() explicitamente após erro');
+              widget.show();
+            } else {
+              console.error('React NPS Widget: Não foi possível chamar o método show() do widget após erro');
+            }
+          }, 3000);
+        }
+        
+        resolve(widget);
       });
     });
   } else {
