@@ -29,12 +29,7 @@ var initNPSWidget;
     static NPS_PASSIVE_MAX = 8;
     static NPS_PROMOTER_MIN = 9;
     constructor(options = {}) {
-      // Verificar se o widget já foi respondido recentemente
-      if (window.localStorage && this.shouldSkipWidget()) {
-        console.log('Widget NPS já foi respondido recentemente. Pulando inicialização.');
-        return;
-      }
-      // Default configuration
+      // Inicializar configurações primeiro para que possamos usar no shouldSkipWidget
       this.config = {
         targetElementId: options.targetElementId || 'ihelp-nps-widget',
         userId: options.userId || 'anonymous',
@@ -52,10 +47,11 @@ var initNPSWidget;
         // Adicionar suporte para os novos parâmetros
         businessId: options.businessId || null,
         profile: options.profile || null,
-        email: options.email || null
+        email: options.email || null,
+        tags: options.tags || []
       };
-
-      // Widget state
+      
+      // Inicializar o widget com estado vazio
       this.state = {
         currentRating: null,
         feedback: '',
@@ -64,11 +60,30 @@ var initNPSWidget;
         error: null
       };
 
-      // Create the widget container
+      // Criar o container do widget
       this.widgetElement = null;
       this.visible = false;
       this.init();
       
+      // Verificar se o widget já foi respondido recentemente
+      this.shouldSkipWidget().then(shouldSkip => {
+        if (window.localStorage && shouldSkip) {
+          console.log('Widget NPS será pulado com base em critérios definidos.');
+          // Mesmo que o widget seja pulado, ele já está inicializado e oculto
+          return;
+        }
+        
+        // Se autoOpen estiver habilitado, mostrar o widget após 3 segundos
+        if (this.config.autoOpen) {
+          setTimeout(() => {
+            this.show();
+          }, 3000);
+        }
+      });
+    }
+    
+    // Método para inicializar o widget após verificações (não usado mais, mantido para compatibilidade)
+    initializeWidget() {
       // Abrir automaticamente com delay de 3 segundos se configurado
       if (this.config.autoOpen) {
         setTimeout(() => {
@@ -77,17 +92,186 @@ var initNPSWidget;
       }
     }
 
-    // Verifica se o widget deve ser pulado com base no localStorage
-    shouldSkipWidget() {
+    // Verifica se o widget deve ser pulado com base no Supabase ou localStorage
+    async shouldSkipWidget() {
+      // Verificar no Supabase se o usuário já avaliou ou fechou o widget recentemente
+      if (this.config.apiKey && this.config.apiUrl && (this.config.email || this.config.userId !== 'anonymous' || this.config.businessId)) {
+        try {
+          // Tabela para registrar fechamentos do widget
+          const closedWidgetTableUrl = this.config.apiUrl.replace('nps_feedback', 'nps_widget_closed');
+          
+          // Construir a URL com os parâmetros de consulta para verificar fechamentos recentes
+          let queryUrl = `${closedWidgetTableUrl}?select=id,closed_at`;
+          
+          // Adicionar filtros baseados nos dados disponíveis
+          const filters = [];
+          
+          if (this.config.email) {
+            filters.push(`email.eq.${encodeURIComponent(this.config.email)}`);
+          }
+          
+          if (this.config.userId !== 'anonymous') {
+            filters.push(`user_id.eq.${encodeURIComponent(this.config.userId)}`);
+          }
+          
+          if (this.config.businessId) {
+            filters.push(`business_id.eq.${encodeURIComponent(this.config.businessId)}`);
+          }
+          
+          // Adicionar os filtros à URL
+          if (filters.length > 0) {
+            queryUrl += `&${filters.join('&')}`;
+          }
+          
+          // Fazer a requisição para o Supabase
+          const response = await fetch(queryUrl, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': this.config.apiKey,
+              'Authorization': `Bearer ${this.config.apiKey}`
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data && data.length > 0) {
+              // Verificar se o fechamento foi nas últimas 24 horas
+              const lastClosed = new Date(data[0].closed_at);
+              const now = new Date();
+              const hoursSinceLastClosed = (now - lastClosed) / (1000 * 60 * 60);
+              
+              if (hoursSinceLastClosed < 24) {
+                console.log('Widget NPS foi fechado recentemente (dados do Supabase). Pulando inicialização.');
+                return true;
+              }
+            }
+          }
+          
+          // Verificar também no localStorage como fallback
+          const lastClosed = window.localStorage.getItem('ihelp_nps_closed');
+          if (lastClosed) {
+            const lastClosedTime = parseInt(lastClosed, 10);
+            const now = Date.now();
+            const hoursSinceLastClosed = (now - lastClosedTime) / (1000 * 60 * 60);
+            
+            // Não mostrar o widget por 24 horas após o fechamento
+            if (hoursSinceLastClosed < 24) {
+              console.log('Widget NPS foi fechado recentemente (localStorage). Pulando inicialização.');
+              return true;
+            }
+          }
+          
+          // Verificar se o usuário já enviou feedback recentemente (localStorage como fallback)
+          const lastSubmission = window.localStorage.getItem('ihelp_nps_submitted');
+          if (lastSubmission) {
+            const lastSubmissionTime = parseInt(lastSubmission, 10);
+            const now = Date.now();
+            const daysSinceLastSubmission = (now - lastSubmissionTime) / (1000 * 60 * 60 * 24);
+            
+            // Não mostrar o widget por 30 dias após a última submissão
+            if (daysSinceLastSubmission < 30) {
+              console.log('Widget NPS já foi respondido recentemente (localStorage). Pulando inicialização.');
+              return true;
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao verificar fechamentos recentes do widget:', error);
+          // Em caso de erro na consulta ao Supabase, verificar no localStorage como fallback
+          return this.checkLocalStorageForSkip();
+        }
+      } else {
+        // Se não temos configuração para o Supabase, usar apenas o localStorage
+        return this.checkLocalStorageForSkip();
+      }
+      
+      return false;
+    }
+    
+    // Método auxiliar para verificar no localStorage se deve pular o widget
+    checkLocalStorageForSkip() {
+      // Verificar se o usuário fechou o widget recentemente
+      const lastClosed = window.localStorage.getItem('ihelp_nps_closed');
+      if (lastClosed) {
+        const lastClosedTime = parseInt(lastClosed, 10);
+        const now = Date.now();
+        const hoursSinceLastClosed = (now - lastClosedTime) / (1000 * 60 * 60);
+        
+        // Não mostrar o widget por 24 horas após o fechamento
+        if (hoursSinceLastClosed < 24) {
+          console.log('Widget NPS foi fechado recentemente (localStorage). Pulando inicialização.');
+          return true;
+        }
+      }
+      
+      // Verificar se o usuário já enviou feedback recentemente
       const lastSubmission = window.localStorage.getItem('ihelp_nps_submitted');
-      if (!lastSubmission) return false;
+      if (lastSubmission) {
+        const lastSubmissionTime = parseInt(lastSubmission, 10);
+        const now = Date.now();
+        const daysSinceLastSubmission = (now - lastSubmissionTime) / (1000 * 60 * 60 * 24);
+        
+        // Não mostrar o widget por 30 dias após a última submissão
+        if (daysSinceLastSubmission < 30) {
+          console.log('Widget NPS já foi respondido recentemente (localStorage). Pulando inicialização.');
+          return true;
+        }
+      }
       
-      const lastSubmissionTime = parseInt(lastSubmission, 10);
-      const now = Date.now();
-      const daysSinceLastSubmission = (now - lastSubmissionTime) / (1000 * 60 * 60 * 24);
+      return false;
+    }
+    
+    // Método para verificar no Supabase se o usuário já avaliou
+    async checkSupabaseForFeedback() {
+      if (this.config.apiKey && this.config.apiUrl && (this.config.email || this.config.userId !== 'anonymous')) {
+        try {
+          // Construir a URL com os parâmetros de consulta
+          let queryUrl = `${this.config.apiUrl}?select=id`;
+          
+          // Adicionar filtros baseados nos dados disponíveis
+          const filters = [];
+          
+          if (this.config.email) {
+            filters.push(`email.eq.${encodeURIComponent(this.config.email)}`);
+          }
+          
+          if (this.config.userId !== 'anonymous') {
+            filters.push(`user_id.eq.${encodeURIComponent(this.config.userId)}`);
+          }
+          
+          if (this.config.businessId) {
+            filters.push(`business_id.eq.${encodeURIComponent(this.config.businessId)}`);
+          }
+          
+          // Adicionar os filtros à URL
+          if (filters.length > 0) {
+            queryUrl += `&${filters.join('&')}`;
+          }
+          
+          // Fazer a requisição para o Supabase
+          const response = await fetch(queryUrl, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': this.config.apiKey,
+              'Authorization': `Bearer ${this.config.apiKey}`
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data && data.length > 0) {
+              console.log('Usuário já avaliou anteriormente. Pulando inicialização do widget.');
+              return true;
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao verificar avaliações anteriores:', error);
+          // Em caso de erro, continuar com a inicialização do widget
+        }
+      }
       
-      // Não mostrar o widget por 30 dias após a última submissão
-      return daysSinceLastSubmission < 30;
+      return false;
     }
     
     // Retorna a categoria NPS com base na pontuação
@@ -695,7 +879,8 @@ var initNPSWidget;
         business_id: this.config.businessId,
         profile: this.config.profile,
         email: this.config.email,
-        url: window.location.href
+        url: window.location.href,
+        tags: this.config.tags && Array.isArray(this.config.tags) ? this.config.tags : []
       };
       
       // Log data for debugging
@@ -754,6 +939,12 @@ var initNPSWidget;
   
   // Adicionar métodos de mostrar/ocultar ao protótipo do NPSWidget
   NPSWidget.prototype.show = function() {
+    // Verificar se o elemento existe antes de tentar acessá-lo
+    if (!this.targetElement) {
+      console.error('Erro ao mostrar widget: O elemento alvo não existe.');
+      return;
+    }
+    
     this.visible = true;
     this.targetElement.style.display = 'block';
     
@@ -770,6 +961,12 @@ var initNPSWidget;
   };
   
   NPSWidget.prototype.hide = function() {
+    // Verificar se o elemento existe antes de tentar acessá-lo
+    if (!this.targetElement) {
+      console.error('Erro ao ocultar widget: O elemento alvo não existe.');
+      return;
+    }
+    
     this.visible = false;
     this.targetElement.style.display = 'none';
     
@@ -780,6 +977,55 @@ var initNPSWidget;
         closeBtn.classList.remove('visible');
         closeBtn.classList.add('ihelp-nps-hide');
       }
+    }
+    
+    // Registrar o fechamento no banco de dados e no localStorage
+    if (!this.state.submitted) {
+      // Salvar no localStorage como fallback
+      if (window.localStorage) {
+        window.localStorage.setItem('ihelp_nps_closed', Date.now().toString());
+      }
+      
+      // Registrar o fechamento no Supabase
+      this.registerWidgetClosed();
+    }
+  };
+  
+  // Método para registrar o fechamento do widget no Supabase
+  NPSWidget.prototype.registerWidgetClosed = function() {
+    // Verificar se temos configuração para o Supabase
+    if (!this.config.apiKey || !this.config.apiUrl) {
+      return;
+    }
+    
+    try {
+      // Tabela para registrar fechamentos do widget
+      const closedWidgetTableUrl = this.config.apiUrl.replace('nps_feedback', 'nps_widget_closed');
+      
+      // Preparar os dados para envio
+      const data = {
+        user_id: this.config.userId,
+        closed_at: new Date().toISOString(),
+        business_id: this.config.businessId,
+        email: this.config.email,
+        url: window.location.href
+      };
+      
+      // Enviar os dados para o Supabase
+      fetch(closedWidgetTableUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': this.config.apiKey,
+          'Authorization': `Bearer ${this.config.apiKey}`,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(data)
+      }).catch(error => {
+        console.error('Erro ao registrar fechamento do widget:', error);
+      });
+    } catch (error) {
+      console.error('Erro ao registrar fechamento do widget:', error);
     }
   };
   
@@ -793,7 +1039,8 @@ var initNPSWidget;
     autoOpen: true,
     businessId: null,
     profile: null,
-    email: null
+    email: null,
+    tags: []
   };
 
   // Função para criar o container do widget
@@ -873,15 +1120,23 @@ var initNPSWidget;
         
         show: function() {
           this._pendingShow = true;
-          if (this._realWidget) {
-            this._realWidget.show();
+          if (this._realWidget && typeof this._realWidget.show === 'function') {
+            try {
+              this._realWidget.show();
+            } catch (e) {
+              console.error('Erro ao mostrar widget temporário:', e);
+            }
           }
         },
         
         hide: function() {
           this._pendingHide = true;
-          if (this._realWidget) {
-            this._realWidget.hide();
+          if (this._realWidget && typeof this._realWidget.hide === 'function') {
+            try {
+              this._realWidget.hide();
+            } catch (e) {
+              console.error('Erro ao ocultar widget temporário:', e);
+            }
           }
         }
       };
