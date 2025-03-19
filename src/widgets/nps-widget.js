@@ -103,6 +103,32 @@ var initNPSWidget;
       // Verificar no Supabase se o usuário já avaliou ou fechou o widget recentemente
       if (this.config.apiKey && this.config.apiUrl && (this.config.email || this.config.userId !== 'anonymous' || this.config.businessId)) {
         try {
+          // 1. VERIFICAR SE O USUÁRIO JÁ ENVIOU FEEDBACK (PRINCIPAL VERIFICAÇÃO)
+          if (this.config.userId !== 'anonymous') {
+            // Construir a URL para verificar se o usuário já enviou feedback
+            const feedbackTableUrl = `${this.config.apiUrl}?select=id&user_id=eq.${encodeURIComponent(this.config.userId)}`;
+            
+            console.log('Verificando se o usuário já enviou feedback:', feedbackTableUrl);
+            
+            const feedbackResponse = await fetch(feedbackTableUrl, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': this.config.apiKey,
+                'Authorization': `Bearer ${this.config.apiKey}`
+              }
+            });
+            
+            if (feedbackResponse.ok) {
+              const feedbackData = await feedbackResponse.json();
+              if (feedbackData && feedbackData.length > 0) {
+                console.log('Usuário já enviou feedback anteriormente. Pulando exibição do widget.');
+                return true;
+              }
+            }
+          }
+          
+          // 2. VERIFICAR SE O USUÁRIO FECHOU O WIDGET RECENTEMENTE
           // Tabela para registrar fechamentos do widget
           const closedWidgetTableUrl = this.config.apiUrl.replace('nps_feedback', 'nps_widget_closed');
           
@@ -112,49 +138,50 @@ var initNPSWidget;
           // Adicionar filtros baseados nos dados disponíveis
           const filters = [];
           
-          // if (this.config.email) {
-          //   filters.push(`email.eq.${encodeURIComponent(this.config.email)}`);
-          // }
-          
           if (this.config.userId !== 'anonymous') {
             filters.push(`user_id=eq.${encodeURIComponent(this.config.userId)}`);
+          } else if (this.config.email) {
+            // Usar email como fallback se userId não estiver disponível
+            filters.push(`email=eq.${encodeURIComponent(this.config.email)}`);
+          } else if (this.config.businessId) {
+            // Usar businessId como último recurso
+            filters.push(`business_id=eq.${encodeURIComponent(this.config.businessId)}`);
           }
-          
-          // if (this.config.businessId) {
-          //   filters.push(`business_id.eq.${encodeURIComponent(this.config.businessId)}`);
-          // }
           
           // Adicionar os filtros à URL
           if (filters.length > 0) {
-            queryUrl += `&${filters.join('&')}`;
-          }
-          
-          // Fazer a requisição para o Supabase
-          const response = await fetch(queryUrl, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': this.config.apiKey,
-              'Authorization': `Bearer ${this.config.apiKey}`
-            }
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data && data.length > 0) {
-              // Verificar se o fechamento foi nas últimas 24 horas
-              const lastClosed = new Date(data[0].closed_at);
-              const now = new Date();
-              const hoursSinceLastClosed = (now - lastClosed) / (1000 * 60 * 60);
-              
-              if (hoursSinceLastClosed < 24) {
-                console.log('Widget NPS foi fechado recentemente (dados do Supabase). Pulando inicialização.');
-                return true;
+            queryUrl += `&${filters.join('&')}&order=closed_at.desc&limit=1`;
+            
+            console.log('Verificando fechamentos recentes:', queryUrl);
+            
+            // Fazer a requisição para o Supabase
+            const response = await fetch(queryUrl, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': this.config.apiKey,
+                'Authorization': `Bearer ${this.config.apiKey}`
+              }
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              if (data && data.length > 0) {
+                // Verificar se o fechamento foi nas últimas 24 horas
+                const lastClosed = new Date(data[0].closed_at);
+                const now = new Date();
+                const hoursSinceLastClosed = (now - lastClosed) / (1000 * 60 * 60);
+                
+                if (hoursSinceLastClosed < 24) {
+                  console.log('Widget NPS foi fechado recentemente (dados do Supabase). Pulando inicialização.');
+                  return true;
+                }
               }
             }
           }
           
-          // Verificar também no localStorage como fallback
+          // 3. VERIFICAR NO LOCALSTORAGE (FALLBACK)
+          // Verificar também no localStorage como fallback para fechamentos recentes
           const lastClosed = window.localStorage.getItem('ihelp_nps_closed');
           if (lastClosed) {
             const lastClosedTime = parseInt(lastClosed, 10);
@@ -182,7 +209,7 @@ var initNPSWidget;
             }
           }
         } catch (error) {
-          console.error('Erro ao verificar fechamentos recentes do widget:', error);
+          console.error('Erro ao verificar no Supabase:', error);
           // Em caso de erro na consulta ao Supabase, verificar no localStorage como fallback
           return this.checkLocalStorageForSkip();
         }
