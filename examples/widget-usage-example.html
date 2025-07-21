@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exemplo de Uso do Widget NPS</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+    code {
+      font-family: Monaco, Consolas, "Andale Mono", monospace;
+    }
+    .note {
+      background-color: #e7f3fe;
+      border-left: 6px solid #2196F3;
+      padding: 15px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Exemplo de Uso do Widget NPS</h1>
+  
+  <p>Esta página demonstra como utilizar o widget NPS com as novas funcionalidades:</p>
+  <ul>
+    <li>Verificação no Supabase se o usuário já avaliou</li>
+    <li>Exibição após 24 horas quando o usuário fecha o widget</li>
+    <li>Suporte para tags (array de strings)</li>
+  </ul>
+
+  <h2>Implementação Básica</h2>
+  
+  <pre><code>&lt;script src="nps-widget.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  initNPSWidget({
+    apiUrl: 'https://cxbvqfhdblmlvrgzuqpd.supabase.co/rest/v1/nps_feedback',
+    apiKey: 'sua-chave-api',
+    primaryColor: '#ea5f3d',
+    userId: 'user123',
+    email: 'usuario@exemplo.com',
+    businessId: 'empresa-abc',
+    profile: 'cliente',
+    tags: ['website', 'homepage']
+  });
+&lt;/script&gt;</code></pre>
+
+  <div class="note">
+    <strong>Nota:</strong> O widget não será exibido se o usuário já tiver avaliado anteriormente (verificado no Supabase) ou se tiver fechado o widget nas últimas 24 horas.
+  </div>
+
+  <h2>Parâmetros de Configuração</h2>
+  
+  <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+    <thead>
+      <tr style="background-color: #f2f2f2;">
+        <th>Parâmetro</th>
+        <th>Descrição</th>
+        <th>Tipo</th>
+        <th>Padrão</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>userId</code></td>
+        <td>Identificador único do usuário</td>
+        <td>String</td>
+        <td>'anonymous'</td>
+      </tr>
+      <tr>
+        <td><code>email</code></td>
+        <td>Email do usuário</td>
+        <td>String</td>
+        <td>null</td>
+      </tr>
+      <tr>
+        <td><code>businessId</code></td>
+        <td>Identificador da empresa</td>
+        <td>String</td>
+        <td>null</td>
+      </tr>
+      <tr>
+        <td><code>profile</code></td>
+        <td>Perfil do usuário</td>
+        <td>String</td>
+        <td>null</td>
+      </tr>
+      <tr>
+        <td><code>tags</code></td>
+        <td>Array de tags associadas ao feedback</td>
+        <td>Array</td>
+        <td>[]</td>
+      </tr>
+      <tr>
+        <td><code>autoOpen</code></td>
+        <td>Abrir automaticamente após 3 segundos</td>
+        <td>Boolean</td>
+        <td>true</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Exemplo com Tags</h2>
+  
+  <p>As tags podem ser usadas para categorizar o feedback e facilitar análises posteriores:</p>
+  
+  <pre><code>initNPSWidget({
+  // Configurações básicas
+  apiUrl: 'https://cxbvqfhdblmlvrgzuqpd.supabase.co/rest/v1/nps_feedback',
+  apiKey: 'sua-chave-api',
+  
+  // Identificação do usuário
+  userId: 'user123',
+  email: 'usuario@exemplo.com',
+  
+  // Contexto do feedback
+  businessId: 'empresa-abc',
+  profile: 'cliente',
+  
+  // Tags para categorização
+  tags: ['website', 'checkout', 'mobile']
+});</code></pre>
+
+  <div class="note">
+    <p><strong>Dica:</strong> Você pode usar tags para:</p>
+    <ul>
+      <li>Identificar a origem do feedback (website, app, email)</li>
+      <li>Marcar a página ou funcionalidade específica (checkout, perfil, busca)</li>
+      <li>Indicar a versão do produto ou campanha</li>
+    </ul>
+  </div>
+
+  <h2>Visualização no Dashboard</h2>
+  <p>Os feedbacks com tags podem ser filtrados e analisados no dashboard NPS para obter insights mais específicos sobre diferentes aspectos do seu produto ou serviço.</p>
+
+  <script src="../src/widgets/nps-widget.js"></script>
+  <script>
+    // Inicializar o widget com as novas opções
+    initNPSWidget({
+      apiUrl: 'https://cxbvqfhdblmlvrgzuqpd.supabase.co/rest/v1/nps_feedback',
+      apiKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4YnZxZmhkYmxtbHZyZ3p1cXBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIyMTY2MjAsImV4cCI6MjA1Nzc5MjYyMH0.7Jrl8_qtkjExzC98QWn1Fl2fVcXNL_E0y-_NTxhSLrc',
+      primaryColor: '#ea5f3d',
+      userId: 'example_user',
+      email: 'exemplo@teste.com',
+      businessId: 'exemplo-empresa',
+      profile: 'visitante',
+      tags: ['exemplo', 'documentacao']
+    });
+  </script>
+</body>
+</html>

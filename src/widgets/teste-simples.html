@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Simples do Widget NPS</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .test-section {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #1557b0;
+        }
+        .log-area {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Teste Simples do Widget NPS</h1>
+        <p>Esta página testa a funcionalidade básica do widget NPS, focando na inicialização via React e no registro de fechamento.</p>
+        
+        <div class="test-section">
+            <h2>Inicialização</h2>
+            <button id="btnInitReactAuto">Inicializar com autoOpen=true</button>
+            <button id="btnLimparStorage">Limpar Storage</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>Status</h2>
+            <button id="btnShowStatus">Mostrar Status</button>
+        </div>
+        
+        <div class="log-area" id="logArea"></div>
+    </div>
+    
+    <script src="nps-widget.js"></script>
+    <script src="nps-fix.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const logArea = document.getElementById('logArea');
+            
+            // Função para adicionar mensagens ao log
+            function log(message) {
+                const entry = document.createElement('div');
+                entry.className = 'log-entry';
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                logArea.appendChild(entry);
+                logArea.scrollTop = logArea.scrollHeight;
+                console.log(message); // Também mostra no console para debug
+            }
+            
+            // Função para criar a configuração básica do widget
+            function createWidgetConfig() {
+                return {
+                    userId: 'user_teste_' + Math.floor(Math.random() * 1000),
+                    apiUrl: 'https://cxbvqfhdblmlvrgzuqpd.supabase.co/rest/v1/nps_feedback',
+                    apiKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4YnZxZmhkYmxtbHZyZ3p1cXBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIyMTY2MjAsImV4cCI6MjA1Nzc5MjYyMH0.7Jrl8_qtkjExzC98QWn1Fl2fVcXNL_E0y-_NTxhSLrc',
+                    autoOpen: true, // Esta é a chave para o nosso teste
+                    businessId: 'negocio_teste',
+                    profile: 'perfil_teste',
+                    email: 'teste@example.com',
+                    tags: ['teste', 'debug']
+                };
+            }
+            
+            // Função para limpar o localStorage
+            function clearLocalStorage() {
+                log('Limpando localStorage...');
+                window.localStorage.removeItem('ihelp_nps_closed');
+                window.localStorage.removeItem('ihelp_nps_submitted');
+                log('localStorage limpo com sucesso!');
+            }
+            
+            // Função para inicializar o widget via React com autoOpen
+            function initializeWithAutoOpen() {
+                log('Inicializando widget via React com autoOpen=true...');
+                try {
+                    if (typeof window.reactInitNPSWidget !== 'undefined') {
+                        const config = createWidgetConfig();
+                        window.reactInitNPSWidget(config).then(widget => {
+                            log('Widget inicializado com sucesso!');
+                            
+                            // Logar o status atual
+                            log(`Visibilidade: ${widget.visible ? 'Visível' : 'Oculto'}`);
+                            log(`Deve ser pulado: ${widget.state.shouldSkip ? 'Sim' : 'Não'}`);
+                            log(`autoOpen está habilitado: ${config.autoOpen ? 'Sim' : 'Não'}`);
+                            
+                            // Armazenar a instância do widget para uso posterior
+                            window.npsWidgetInstance = widget;
+                        }).catch(error => {
+                            log(`ERRO ao inicializar widget: ${error.message}`);
+                        });
+                    } else {
+                        log('ERRO: Método reactInitNPSWidget não está disponível!');
+                    }
+                } catch (e) {
+                    log(`ERRO ao inicializar widget: ${e.message}`);
+                }
+            }
+            
+            // Função para mostrar o status atual do widget
+            function showStatus() {
+                log('Status atual do widget:');
+                
+                if (window.npsWidgetInstance) {
+                    log(`Instância: Disponível`);
+                    log(`Visibilidade: ${window.npsWidgetInstance.visible ? 'Visível' : 'Oculto'}`);
+                    log(`Deve ser pulado: ${window.npsWidgetInstance.state.shouldSkip ? 'Sim' : 'Não'}`);
+                    
+                    // Verificar localStorage
+                    const lastClosed = window.localStorage.getItem('ihelp_nps_closed');
+                    const lastSubmitted = window.localStorage.getItem('ihelp_nps_submitted');
+                    
+                    log(`Fechado recentemente: ${lastClosed ? 'Sim, em ' + new Date(parseInt(lastClosed)).toLocaleString() : 'Não'}`);
+                    log(`Feedback enviado recentemente: ${lastSubmitted ? 'Sim, em ' + new Date(parseInt(lastSubmitted)).toLocaleString() : 'Não'}`);
+                } else {
+                    log('Nenhuma instância do widget disponível. Inicialize primeiro.');
+                }
+            }
+            
+            // Configurar os botões
+            document.getElementById('btnInitReactAuto').addEventListener('click', initializeWithAutoOpen);
+            document.getElementById('btnLimparStorage').addEventListener('click', clearLocalStorage);
+            document.getElementById('btnShowStatus').addEventListener('click', showStatus);
+            
+            // Logar informações sobre o estado inicial
+            log('Página de teste carregada.');
+            log('Versão de teste focada na inicialização via React com autoOpen e no registro de fechamento.');
+            
+            // Adicionar monkeypatching para debug
+            if (typeof window.NPSWidget !== 'undefined') {
+                const originalHide = window.NPSWidget.prototype.hide;
+                window.NPSWidget.prototype.hide = function(userInitiated) {
+                    log(`Método hide chamado com userInitiated=${userInitiated}`);
+                    return originalHide.call(this, userInitiated);
+                };
+                
+                const originalShow = window.NPSWidget.prototype.show;
+                window.NPSWidget.prototype.show = function() {
+                    log(`Método show chamado`);
+                    return originalShow.call(this);
+                };
+                
+                if (window.NPSWidget.prototype.registerWidgetClosed) {
+                    const originalRegister = window.NPSWidget.prototype.registerWidgetClosed;
+                    window.NPSWidget.prototype.registerWidgetClosed = function() {
+                        log(`Método registerWidgetClosed chamado`);
+                        return originalRegister.call(this);
+                    };
+                }
+                
+                log('Métodos de debug adicionados ao widget.');
+            } else {
+                log('AVISO: Não foi possível adicionar métodos de debug (NPSWidget não definido).');
+            }
+        });
+    </script>
+</body>
+</html>
