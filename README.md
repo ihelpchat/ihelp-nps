@@ -99,3 +99,41 @@ npm run dev
 # Construir para produção
 npm run build
 ```
+
+## 🐳 Deploy com Docker
+
+O projeto está totalmente configurado para rodar com Docker. Veja o guia completo em [DOCKER.md](./DOCKER.md).
+
+### Quick Start
+
+```bash
+# 1. Configurar variáveis de ambiente
+cp .env.example .env
+# Edite o .env com suas credenciais do Supabase
+
+# 2. Deploy com script auxiliar (recomendado)
+./docker-deploy.sh deploy
+
+# 3. Ou com Docker Compose manualmente
+docker-compose up -d --build
+```
+
+A aplicação estará disponível em **http://localhost:3000**
+
+### Comandos úteis
+
+```bash
+# Ver logs
+./docker-deploy.sh logs
+
+# Verificar status
+./docker-deploy.sh status
+
+# Health check
+./docker-deploy.sh health
+
+# Parar aplicação
+./docker-deploy.sh stop
+```
+
+Para deploy em produção, consulte [DOCKER.md](./DOCKER.md) para instruções detalhadas.

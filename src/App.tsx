@@ -3,6 +3,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
+import Companies from './pages/Companies';
 
 const queryClient = new QueryClient();
 
@@ -14,6 +15,10 @@ const router = createBrowserRouter([
   {
     path: '/login',
     element: <Login />,
+  },
+  {
+    path: '/empresas',
+    element: <Companies />,
   },
 ]);
 
