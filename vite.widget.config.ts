@@ -5,9 +5,9 @@ export default defineConfig({
   plugins: [react()],
   build: {
     lib: {
-      entry: 'src/widget/main.tsx',
+      entry: 'src/widgets/nps-widget.js',
       name: 'IhelpNPS',
-      fileName: 'ihelp-nps',
+      fileName: 'nps-widget',
       formats: ['umd'],
     },
     rollupOptions: {
