@@ -58,7 +58,11 @@ var initNPSWidget;
         submitted: false,
         loading: false,
         error: null,
-        shouldSkip: false // Flag para controlar se o widget deve ser pulado
+        shouldSkip: false, // Flag para controlar se o widget deve ser pulado
+        // Estados para etapa pós-NPS
+        postNpsStep: false, // Indica se está na etapa pós-NPS
+        feedbackId: null, // ID do feedback salvo para atualização posterior
+        extraData: {} // Dados extras das perguntas pós-NPS
       };
 
       // Criar o container do widget mas mantê-lo oculto até verificarmos se deve ser exibido
@@ -660,6 +664,56 @@ var initNPSWidget;
           border-color: #4b5563;
           color: #f3f4f6;
         }
+        
+        /* Estilos para etapa pós-NPS */
+        .ihelp-nps-extra-questions {
+          margin-top: 1rem;
+        }
+        
+        .ihelp-nps-question-group {
+          margin-bottom: 1rem;
+        }
+        
+        .ihelp-nps-question-group .ihelp-nps-feedback-label {
+          font-size: 0.95rem;
+          margin-bottom: 0.5rem;
+        }
+        
+        .ihelp-nps-question-group .ihelp-nps-feedback-textarea {
+          min-height: 3.5rem;
+          margin-bottom: 0.5rem;
+        }
+        
+        .ihelp-nps-button-group {
+          display: flex;
+          gap: 0.75rem;
+          margin-top: 1rem;
+        }
+        
+        .ihelp-nps-skip-btn {
+          background-color: #e5e7eb !important;
+          color: #374151 !important;
+          flex: 1;
+        }
+        
+        .ihelp-nps-skip-btn:hover {
+          background-color: #d1d5db !important;
+        }
+        
+        .ihelp-nps-button-group .ihelp-nps-submit-btn {
+          flex: 2;
+        }
+        
+        @media (max-width: 640px) {
+          .ihelp-nps-button-group {
+            flex-direction: column;
+          }
+          
+          .ihelp-nps-button-group .ihelp-nps-submit-btn,
+          .ihelp-nps-skip-btn {
+            flex: 1;
+          }
+        }
       `;
       
       document.head.appendChild(style);
@@ -707,6 +761,61 @@ var initNPSWidget;
                 </svg>
               </div>
               <span>${this.config.thankYouMessage}</span>
+            </div>
+          </div>
+        `;
+      } else if (this.state.postNpsStep === 'admin_questions') {
+        // Render perguntas extras para administradores
+        wrapper.innerHTML = `
+          <div class="ihelp-nps-card">
+            <button class="ihelp-nps-close-btn visible" aria-label="Fechar">
+              <img src="https://img.icons8.com/ios-glyphs/30/delete-sign.png" alt="Fechar" width="16" height="16">
+            </button>
+            <div class="ihelp-nps-progress">
+              <div class="ihelp-nps-progress-bar" style="width: 100%"></div>
+            </div>
+            
+            <h3 class="ihelp-nps-title">Obrigado pela avaliação! Queremos te conhecer melhor.</h3>
+            
+            <div class="ihelp-nps-extra-questions">
+              <div class="ihelp-nps-question-group">
+                <label class="ihelp-nps-feedback-label">Além do iHelp, quais outros serviços você utiliza hoje na sua empresa?</label>
+                <textarea 
+                  class="ihelp-nps-feedback-textarea" 
+                  placeholder="Ex: Sistema de gestão, CRM, etc..."
+                  id="ihelp-nps-extra-q1"
+                  rows="2"
+                ></textarea>
+              </div>
+              
+              <div class="ihelp-nps-question-group">
+                <label class="ihelp-nps-feedback-label">Na sua opinião, qual outro serviço o iHelp poderia te oferecer para melhorar a operação da sua empresa?</label>
+                <textarea 
+                  class="ihelp-nps-feedback-textarea" 
+                  placeholder="Compartilhe suas ideias..."
+                  id="ihelp-nps-extra-q2"
+                  rows="2"
+                ></textarea>
+              </div>
+              
+              <div class="ihelp-nps-question-group">
+                <label class="ihelp-nps-feedback-label">Envie sugestões sobre o que podemos melhorar atualmente:</label>
+                <textarea 
+                  class="ihelp-nps-feedback-textarea" 
+                  placeholder="Suas sugestões são muito importantes..."
+                  id="ihelp-nps-extra-q3"
+                  rows="2"
+                ></textarea>
+              </div>
+              
+              <div class="ihelp-nps-button-group">
+                <button class="ihelp-nps-submit-btn ihelp-nps-skip-btn" id="ihelp-nps-skip-extra">
+                  Pular
+                </button>
+                <button class="ihelp-nps-submit-btn" id="ihelp-nps-submit-extra">
+                  Enviar respostas
+                </button>
+              </div>
             </div>
           </div>
         `;
@@ -810,15 +919,15 @@ var initNPSWidget;
       if (this.state.submitted) return;
       
       // Add listeners for rating buttons
-      if (this.state.currentRating === null) {
+      if (this.state.currentRating === null && !this.state.postNpsStep) {
         const ratingButtons = this.widgetElement.querySelectorAll('.ihelp-nps-rating-btn');
         ratingButtons.forEach(button => {
           button.addEventListener('click', this.handleRatingSelect.bind(this));
         });
       }
       
-      // Add listener for submit button
-      if (this.state.currentRating !== null) {
+      // Add listener for submit button (etapa de feedback)
+      if (this.state.currentRating !== null && !this.state.postNpsStep) {
         const submitButton = document.getElementById('ihelp-nps-submit');
         if (submitButton) {
           submitButton.addEventListener('click', this.handleSubmit.bind(this));
@@ -836,6 +945,96 @@ var initNPSWidget;
             }
           });
         }
+      }
+      
+      // Add listeners for admin extra questions step
+      if (this.state.postNpsStep === 'admin_questions') {
+        const submitExtraBtn = document.getElementById('ihelp-nps-submit-extra');
+        const skipExtraBtn = document.getElementById('ihelp-nps-skip-extra');
+        
+        if (submitExtraBtn) {
+          submitExtraBtn.addEventListener('click', this.handleSubmitExtraQuestions.bind(this));
+        }
+        
+        if (skipExtraBtn) {
+          skipExtraBtn.addEventListener('click', this.handleSkipExtra.bind(this));
+        }
+      }
+      
+    }
+    
+    // Handle submit extra questions (admin)
+    async handleSubmitExtraQuestions() {
+      const q1 = document.getElementById('ihelp-nps-extra-q1');
+      const q2 = document.getElementById('ihelp-nps-extra-q2');
+      const q3 = document.getElementById('ihelp-nps-extra-q3');
+      const submitBtn = document.getElementById('ihelp-nps-submit-extra');
+      
+      // Mostrar loading no botão
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = 'Enviando...';
+      }
+      
+      const extraData = {
+        outros_servicos: q1 ? q1.value.trim() : '',
+        sugestao_novos_servicos: q2 ? q2.value.trim() : '',
+        sugestao_melhorias: q3 ? q3.value.trim() : '',
+        respondido_em: new Date().toISOString()
+      };
+      
+      // Atualizar o registro com os dados extras
+      await this.updateExtraData(extraData);
+      
+      // Finalizar o widget
+      this.state.submitted = true;
+      this.state.postNpsStep = false;
+      this.render();
+      
+      setTimeout(() => {
+        this.hide();
+      }, 4000);
+    }
+    
+    // Handle skip extra step
+    handleSkipExtra() {
+      this.state.submitted = true;
+      this.state.postNpsStep = false;
+      this.render();
+      
+      setTimeout(() => {
+        this.hide();
+      }, 4000);
+    }
+    
+    // Update extra data in the database
+    async updateExtraData(extraData) {
+      if (!this.state.feedbackId || !this.config.apiKey) {
+        console.warn('Não foi possível atualizar dados extras: ID do feedback ou API key não disponíveis');
+        return;
+      }
+      
+      try {
+        const updateUrl = `${this.config.apiUrl}?id=eq.${this.state.feedbackId}`;
+        
+        const response = await fetch(updateUrl, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': this.config.apiKey,
+            'Authorization': `Bearer ${this.config.apiKey}`,
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({ extra_data: extraData })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Erro ao atualizar dados extras: ${response.status}`);
+        }
+        
+        console.log('Dados extras salvos com sucesso:', extraData);
+      } catch (error) {
+        console.error('Erro ao salvar dados extras:', error);
       }
     }
     
@@ -865,20 +1064,33 @@ var initNPSWidget;
       
       // Submit data to API
       this.submitFeedback()
-        .then(() => {
-          this.state.submitted = true;
+        .then((response) => {
           this.state.loading = false;
+          
+          // Salvar no localStorage para não mostrar novamente por um tempo
+          if (window.localStorage) {
+            window.localStorage.setItem('ihelp_nps_submitted', Date.now().toString());
+          }
+          
+          // Verificar se deve mostrar etapa pós-NPS
+          const score = this.state.currentRating;
+          const isAdmin = this.config.profile === 1 || this.config.profile === '1';
+          
+          // ADMs com nota > 6: mostrar perguntas extras
+          if (isAdmin && score > 6) {
+            this.state.postNpsStep = 'admin_questions';
+            this.render();
+            return;
+          }
+          
+          // Caso contrário, finalizar normalmente
+          this.state.submitted = true;
           this.render();
           
           // Fechar o widget automaticamente após 4 segundos
           setTimeout(() => {
             this.hide();
           }, 4000);
-          
-          // Salvar no localStorage para não mostrar novamente por um tempo
-          if (window.localStorage) {
-            window.localStorage.setItem('ihelp_nps_submitted', Date.now().toString());
-          }
         })
         .catch(error => {
           console.error('Erro ao enviar feedback NPS:', error);
@@ -939,7 +1151,7 @@ var initNPSWidget;
             'Content-Type': 'application/json',
             'apikey': this.config.apiKey,
             'Authorization': `Bearer ${this.config.apiKey}`,
-            'Prefer': 'return=minimal'
+            'Prefer': 'return=representation'
           },
           body: JSON.stringify(data)
         });
@@ -948,7 +1160,14 @@ var initNPSWidget;
           throw new Error(`Erro ao enviar feedback: ${response.status}`);
         }
         
-        return response;
+        // Salvar o ID do feedback para atualização posterior
+        const responseData = await response.json();
+        if (responseData && responseData.length > 0) {
+          this.state.feedbackId = responseData[0].id;
+          console.log('Feedback salvo com ID:', this.state.feedbackId);
+        }
+        
+        return responseData;
       } catch (error) {
         console.error('Erro ao enviar feedback NPS:', error);
         throw error;
