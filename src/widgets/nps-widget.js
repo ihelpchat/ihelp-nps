@@ -823,14 +823,9 @@ var initNPSWidget;
                 ></textarea>
               </div>
               
-              <div class="ihelp-nps-button-group">
-                <button class="ihelp-nps-submit-btn ihelp-nps-skip-btn" id="ihelp-nps-skip-question">
-                  Pular
-                </button>
-                <button class="ihelp-nps-submit-btn" id="ihelp-nps-next-question">
-                  ${isLastQuestion ? 'Finalizar' : 'Próxima'}
-                </button>
-              </div>
+              <button class="ihelp-nps-submit-btn" id="ihelp-nps-next-question" style="width: 100%; margin-top: 1rem;">
+                ${isLastQuestion ? 'Finalizar' : 'Próxima'}
+              </button>
             </div>
           </div>
         `;
@@ -965,14 +960,9 @@ var initNPSWidget;
       // Add listeners for admin extra questions step (uma pergunta por vez)
       if (this.state.postNpsStep === 'admin_questions') {
         const nextQuestionBtn = document.getElementById('ihelp-nps-next-question');
-        const skipQuestionBtn = document.getElementById('ihelp-nps-skip-question');
         
         if (nextQuestionBtn) {
           nextQuestionBtn.addEventListener('click', this.handleNextQuestion.bind(this));
-        }
-        
-        if (skipQuestionBtn) {
-          skipQuestionBtn.addEventListener('click', this.handleSkipQuestion.bind(this));
         }
       }
       
@@ -1021,33 +1011,6 @@ var initNPSWidget;
         }, 4000);
       } else {
         // Avançar para próxima pergunta
-        this.state.currentQuestionIndex++;
-        this.render();
-      }
-    }
-    
-    // Handle skip question (pular para próxima ou finalizar)
-    async handleSkipQuestion() {
-      const isLastQuestion = this.state.currentQuestionIndex === this.extraQuestions.length - 1;
-      
-      if (isLastQuestion) {
-        // Última pergunta - finalizar
-        // Se tem alguma resposta, enviar
-        if (Object.keys(this.state.extraData).length > 0) {
-          this.state.extraData.respondido_em = new Date().toISOString();
-          await this.updateExtraData(this.state.extraData);
-        }
-        
-        this.state.submitted = true;
-        this.state.postNpsStep = false;
-        this.state.currentQuestionIndex = 0;
-        this.render();
-        
-        setTimeout(() => {
-          this.hide();
-        }, 4000);
-      } else {
-        // Pular para próxima pergunta
         this.state.currentQuestionIndex++;
         this.render();
       }
