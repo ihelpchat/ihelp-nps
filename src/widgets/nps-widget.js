@@ -1,5 +1,5 @@
 /**
- * iHelp NPS Widget
+ * iHelp NPS Widget v1.2
  * 
  * A lightweight, embeddable NPS (Net Promoter Score) widget
  * that can be added to any website with a simple script tag.
