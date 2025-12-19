@@ -1,5 +1,5 @@
 /**
- * iHelp NPS Widget v1.2
+ * iHelp NPS Widget v1.3
  * 
  * A lightweight, embeddable NPS (Net Promoter Score) widget
  * that can be added to any website with a simple script tag.
@@ -51,6 +51,25 @@ var initNPSWidget;
         tags: options.tags || []
       };
       
+      // Definição das perguntas extras para administradores
+      this.extraQuestions = [
+        {
+          id: 'outros_servicos',
+          label: 'Além do iHelp, quais outros serviços você utiliza hoje na sua empresa?',
+          placeholder: 'Ex: Sistema de gestão, CRM, etc...'
+        },
+        {
+          id: 'sugestao_novos_servicos',
+          label: 'Na sua opinião, qual outro serviço o iHelp poderia te oferecer para melhorar a operação da sua empresa?',
+          placeholder: 'Compartilhe suas ideias...'
+        },
+        {
+          id: 'sugestao_melhorias',
+          label: 'Envie sugestões sobre o que podemos melhorar atualmente:',
+          placeholder: 'Suas sugestões são muito importantes...'
+        }
+      ];
+      
       // Inicializar o widget com estado vazio
       this.state = {
         currentRating: null,
@@ -61,6 +80,7 @@ var initNPSWidget;
         shouldSkip: false, // Flag para controlar se o widget deve ser pulado
         // Estados para etapa pós-NPS
         postNpsStep: false, // Indica se está na etapa pós-NPS
+        currentQuestionIndex: 0, // Índice da pergunta atual (0, 1, 2)
         feedbackId: null, // ID do feedback salvo para atualização posterior
         extraData: {} // Dados extras das perguntas pós-NPS
       };
@@ -666,8 +686,16 @@ var initNPSWidget;
         }
         
         /* Estilos para etapa pós-NPS */
+        .ihelp-nps-question-counter {
+          font-size: 0.8rem;
+          color: #9ca3af;
+          text-align: center;
+          margin-bottom: 1rem;
+          font-weight: 500;
+        }
+        
         .ihelp-nps-extra-questions {
-          margin-top: 1rem;
+          margin-top: 0.5rem;
         }
         
         .ihelp-nps-question-group {
@@ -765,55 +793,42 @@ var initNPSWidget;
           </div>
         `;
       } else if (this.state.postNpsStep === 'admin_questions') {
-        // Render perguntas extras para administradores
+        // Render pergunta extra atual para administradores (uma de cada vez)
+        const questionIndex = this.state.currentQuestionIndex;
+        const question = this.extraQuestions[questionIndex];
+        const isLastQuestion = questionIndex === this.extraQuestions.length - 1;
+        const progressPercent = Math.round(((questionIndex + 1) / this.extraQuestions.length) * 100);
+        
         wrapper.innerHTML = `
           <div class="ihelp-nps-card">
             <button class="ihelp-nps-close-btn visible" aria-label="Fechar">
               <img src="https://img.icons8.com/ios-glyphs/30/delete-sign.png" alt="Fechar" width="16" height="16">
             </button>
             <div class="ihelp-nps-progress">
-              <div class="ihelp-nps-progress-bar" style="width: 100%"></div>
+              <div class="ihelp-nps-progress-bar" style="width: ${progressPercent}%"></div>
             </div>
             
-            <h3 class="ihelp-nps-title">Obrigado pela avaliação! Queremos te conhecer melhor.</h3>
+            <div class="ihelp-nps-question-counter">
+              Pergunta ${questionIndex + 1} de ${this.extraQuestions.length}
+            </div>
             
             <div class="ihelp-nps-extra-questions">
               <div class="ihelp-nps-question-group">
-                <label class="ihelp-nps-feedback-label">Além do iHelp, quais outros serviços você utiliza hoje na sua empresa?</label>
+                <label class="ihelp-nps-feedback-label">${question.label}</label>
                 <textarea 
                   class="ihelp-nps-feedback-textarea" 
-                  placeholder="Ex: Sistema de gestão, CRM, etc..."
-                  id="ihelp-nps-extra-q1"
-                  rows="2"
-                ></textarea>
-              </div>
-              
-              <div class="ihelp-nps-question-group">
-                <label class="ihelp-nps-feedback-label">Na sua opinião, qual outro serviço o iHelp poderia te oferecer para melhorar a operação da sua empresa?</label>
-                <textarea 
-                  class="ihelp-nps-feedback-textarea" 
-                  placeholder="Compartilhe suas ideias..."
-                  id="ihelp-nps-extra-q2"
-                  rows="2"
-                ></textarea>
-              </div>
-              
-              <div class="ihelp-nps-question-group">
-                <label class="ihelp-nps-feedback-label">Envie sugestões sobre o que podemos melhorar atualmente:</label>
-                <textarea 
-                  class="ihelp-nps-feedback-textarea" 
-                  placeholder="Suas sugestões são muito importantes..."
-                  id="ihelp-nps-extra-q3"
-                  rows="2"
+                  placeholder="${question.placeholder}"
+                  id="ihelp-nps-extra-current"
+                  rows="3"
                 ></textarea>
               </div>
               
               <div class="ihelp-nps-button-group">
-                <button class="ihelp-nps-submit-btn ihelp-nps-skip-btn" id="ihelp-nps-skip-extra">
+                <button class="ihelp-nps-submit-btn ihelp-nps-skip-btn" id="ihelp-nps-skip-question">
                   Pular
                 </button>
-                <button class="ihelp-nps-submit-btn" id="ihelp-nps-submit-extra">
-                  Enviar respostas
+                <button class="ihelp-nps-submit-btn" id="ihelp-nps-next-question">
+                  ${isLastQuestion ? 'Finalizar' : 'Próxima'}
                 </button>
               </div>
             </div>
@@ -947,64 +962,95 @@ var initNPSWidget;
         }
       }
       
-      // Add listeners for admin extra questions step
+      // Add listeners for admin extra questions step (uma pergunta por vez)
       if (this.state.postNpsStep === 'admin_questions') {
-        const submitExtraBtn = document.getElementById('ihelp-nps-submit-extra');
-        const skipExtraBtn = document.getElementById('ihelp-nps-skip-extra');
+        const nextQuestionBtn = document.getElementById('ihelp-nps-next-question');
+        const skipQuestionBtn = document.getElementById('ihelp-nps-skip-question');
         
-        if (submitExtraBtn) {
-          submitExtraBtn.addEventListener('click', this.handleSubmitExtraQuestions.bind(this));
+        if (nextQuestionBtn) {
+          nextQuestionBtn.addEventListener('click', this.handleNextQuestion.bind(this));
         }
         
-        if (skipExtraBtn) {
-          skipExtraBtn.addEventListener('click', this.handleSkipExtra.bind(this));
+        if (skipQuestionBtn) {
+          skipQuestionBtn.addEventListener('click', this.handleSkipQuestion.bind(this));
         }
       }
       
     }
     
-    // Handle submit extra questions (admin)
-    async handleSubmitExtraQuestions() {
-      const q1 = document.getElementById('ihelp-nps-extra-q1');
-      const q2 = document.getElementById('ihelp-nps-extra-q2');
-      const q3 = document.getElementById('ihelp-nps-extra-q3');
-      const submitBtn = document.getElementById('ihelp-nps-submit-extra');
+    // Salvar resposta da pergunta atual no estado
+    saveCurrentAnswer() {
+      const textarea = document.getElementById('ihelp-nps-extra-current');
+      const questionIndex = this.state.currentQuestionIndex;
+      const question = this.extraQuestions[questionIndex];
       
-      // Mostrar loading no botão
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = 'Enviando...';
+      if (textarea && textarea.value.trim()) {
+        this.state.extraData[question.id] = textarea.value.trim();
       }
-      
-      const extraData = {
-        outros_servicos: q1 ? q1.value.trim() : '',
-        sugestao_novos_servicos: q2 ? q2.value.trim() : '',
-        sugestao_melhorias: q3 ? q3.value.trim() : '',
-        respondido_em: new Date().toISOString()
-      };
-      
-      // Atualizar o registro com os dados extras
-      await this.updateExtraData(extraData);
-      
-      // Finalizar o widget
-      this.state.submitted = true;
-      this.state.postNpsStep = false;
-      this.render();
-      
-      setTimeout(() => {
-        this.hide();
-      }, 4000);
     }
     
-    // Handle skip extra step
-    handleSkipExtra() {
-      this.state.submitted = true;
-      this.state.postNpsStep = false;
-      this.render();
+    // Handle next question (ou finalizar se for a última)
+    async handleNextQuestion() {
+      // Salvar resposta atual
+      this.saveCurrentAnswer();
       
-      setTimeout(() => {
-        this.hide();
-      }, 4000);
+      const isLastQuestion = this.state.currentQuestionIndex === this.extraQuestions.length - 1;
+      
+      if (isLastQuestion) {
+        // Última pergunta - finalizar e enviar dados
+        const nextBtn = document.getElementById('ihelp-nps-next-question');
+        if (nextBtn) {
+          nextBtn.disabled = true;
+          nextBtn.innerHTML = 'Enviando...';
+        }
+        
+        // Adicionar timestamp
+        this.state.extraData.respondido_em = new Date().toISOString();
+        
+        // Enviar dados extras para o banco
+        await this.updateExtraData(this.state.extraData);
+        
+        // Finalizar
+        this.state.submitted = true;
+        this.state.postNpsStep = false;
+        this.state.currentQuestionIndex = 0;
+        this.render();
+        
+        setTimeout(() => {
+          this.hide();
+        }, 4000);
+      } else {
+        // Avançar para próxima pergunta
+        this.state.currentQuestionIndex++;
+        this.render();
+      }
+    }
+    
+    // Handle skip question (pular para próxima ou finalizar)
+    async handleSkipQuestion() {
+      const isLastQuestion = this.state.currentQuestionIndex === this.extraQuestions.length - 1;
+      
+      if (isLastQuestion) {
+        // Última pergunta - finalizar
+        // Se tem alguma resposta, enviar
+        if (Object.keys(this.state.extraData).length > 0) {
+          this.state.extraData.respondido_em = new Date().toISOString();
+          await this.updateExtraData(this.state.extraData);
+        }
+        
+        this.state.submitted = true;
+        this.state.postNpsStep = false;
+        this.state.currentQuestionIndex = 0;
+        this.render();
+        
+        setTimeout(() => {
+          this.hide();
+        }, 4000);
+      } else {
+        // Pular para próxima pergunta
+        this.state.currentQuestionIndex++;
+        this.render();
+      }
     }
     
     // Update extra data in the database
