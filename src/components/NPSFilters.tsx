@@ -5,18 +5,27 @@ export interface NPSFilters {
   profile: string;
   url: string;
   category: string;
+  campaignId?: string;
 }
 
 interface NPSFiltersProps {
   filters: NPSFilters;
   onFiltersChange: (filters: NPSFilters) => void;
   onClearFilters: () => void;
+  campaignOptions?: {
+    id: string;
+    name: string;
+    is_active: boolean;
+    start_date?: string | null;
+    end_date?: string | null;
+  }[];
 }
 
 const NPSFiltersComponent: React.FC<NPSFiltersProps> = ({
   filters,
   onFiltersChange,
   onClearFilters,
+  campaignOptions = [],
 }) => {
   const handleInputChange = (field: keyof NPSFilters, value: string) => {
     onFiltersChange({
@@ -25,19 +34,36 @@ const NPSFiltersComponent: React.FC<NPSFiltersProps> = ({
     });
   };
 
-  const hasActiveFilters = filters.profile || (filters.url && filters.url.length >= 3) || filters.category;
+  const hasActiveFilters =
+    filters.profile ||
+    (filters.url && filters.url.length >= 3) ||
+    filters.category ||
+    filters.campaignId;
+
+  const selectedCampaign = campaignOptions.find((c) => c.id === filters.campaignId);
+  const campaignLabel =
+    filters.campaignId === 'none'
+      ? 'Sem campanha'
+      : selectedCampaign
+      ? selectedCampaign.name
+      : undefined;
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mb-8">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Filter className="h-5 w-5 text-primary-600" />
-          <h2 className="text-xl font-medium text-gray-900">Filtros</h2>
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-primary-50 flex items-center justify-center">
+            <Filter className="h-5 w-5 text-primary-600" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Filtros avançados</h2>
+            <p className="text-sm text-gray-500">Refine por perfil, campanha ou URL</p>
+          </div>
         </div>
         {hasActiveFilters && (
           <button
             onClick={onClearFilters}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
           >
             <X className="h-4 w-4" />
             Limpar filtros
@@ -45,7 +71,28 @@ const NPSFiltersComponent: React.FC<NPSFiltersProps> = ({
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
+        {/* Filtro por Campanha */}
+        <div className="col-span-1">
+          <label htmlFor="campaign-filter" className="block text-sm font-medium text-gray-700 mb-2">
+            Campanha NPS
+          </label>
+          <select
+            id="campaign-filter"
+            value={filters.campaignId || ''}
+            onChange={(e) => handleInputChange('campaignId', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          >
+            <option value="">Todas as campanhas</option>
+            <option value="none">Sem campanha (respostas não vinculadas)</option>
+            {campaignOptions.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} {c.is_active ? '' : '(inativa)'}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Filtro por Perfil */}
         <div>
           <label htmlFor="profile-filter" className="block text-sm font-medium text-gray-700 mb-2">
@@ -112,9 +159,14 @@ const NPSFiltersComponent: React.FC<NPSFiltersProps> = ({
 
       {/* Indicador de filtros ativos */}
       {hasActiveFilters && (
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <div className="flex flex-wrap gap-2">
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <div className="flex flex-wrap gap-2 items-center">
             <span className="text-sm text-gray-600">Filtros ativos:</span>
+            {filters.campaignId && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
+                Campanha: {campaignLabel || 'Selecionada'}
+              </span>
+            )}
             {filters.profile && (
               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                 Perfil: {filters.profile === '1' ? 'ADM' : 'ATD'}

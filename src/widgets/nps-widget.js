@@ -1,5 +1,5 @@
 /**
- * iHelp NPS Widget v1.3
+ * iHelp NPS Widget v1.4
  * 
  * A lightweight, embeddable NPS (Net Promoter Score) widget
  * that can be added to any website with a simple script tag.
@@ -48,7 +48,11 @@ var initNPSWidget;
         businessId: options.businessId || null,
         profile: options.profile || null,
         email: options.email || null,
-        tags: options.tags || []
+        tags: options.tags || [],
+        campaignId: options.campaignId || null,
+        campaignsApiUrl:
+          options.campaignsApiUrl ||
+          (options.apiUrl ? options.apiUrl.replace('nps_feedback', 'nps_campaigns') : null)
       };
       
       // Definição das perguntas extras para administradores
@@ -124,6 +128,30 @@ var initNPSWidget;
 
     // Verifica se o widget deve ser pulado com base no Supabase ou localStorage
     async shouldSkipWidget() {
+      // Verificar se a campanha associada está ativa
+      if (this.config.campaignId && this.config.apiKey && this.config.campaignsApiUrl) {
+        try {
+          const campaignUrl = `${this.config.campaignsApiUrl}?select=is_active&id=eq.${encodeURIComponent(this.config.campaignId)}`;
+          const campaignResp = await fetch(campaignUrl, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: this.config.apiKey,
+              Authorization: `Bearer ${this.config.apiKey}`
+            }
+          });
+          if (campaignResp.ok) {
+            const [campaign] = await campaignResp.json();
+            if (!campaign || campaign.is_active === false) {
+              console.log('Widget NPS: campanha inativa, não exibir.');
+              return true;
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao verificar campanha ativa:', error);
+        }
+      }
+
       // Verificar no Supabase se o usuário já avaliou ou fechou o widget recentemente
       if (this.config.apiKey && this.config.apiUrl && (this.config.email || this.config.userId !== 'anonymous' || this.config.businessId)) {
         try {
@@ -1135,7 +1163,8 @@ var initNPSWidget;
         profile: this.config.profile,
         email: this.config.email,
         url: window.location.href,
-        tags: this.config.tags && Array.isArray(this.config.tags) ? this.config.tags : []
+        tags: this.config.tags && Array.isArray(this.config.tags) ? this.config.tags : [],
+        campaign_id: this.config.campaignId || null
       };
       
       // Log data for debugging
@@ -1294,7 +1323,8 @@ var initNPSWidget;
         closed_at: new Date().toISOString(),
         business_id: this.config.businessId,
         email: this.config.email,
-        url: window.location.href
+        url: window.location.href,
+        campaign_id: this.config.campaignId || null
       };
       
       // Enviar os dados para o Supabase
@@ -1326,7 +1356,9 @@ var initNPSWidget;
     businessId: null,
     profile: null,
     email: null,
-    tags: []
+    tags: [],
+    campaignId: null,
+    campaignsApiUrl: null
   };
 
   // Função para criar o container do widget

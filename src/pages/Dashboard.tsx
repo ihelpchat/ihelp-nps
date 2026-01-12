@@ -1,12 +1,12 @@
-// Importação do React para usar hooks
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
-import { Download, BarChart3, Users, LogOut, MessageSquare, MessageCircle, Activity, Building, Headphones } from 'lucide-react';
+import { Download, BarChart3, Users, MessageCircle, Activity, Building, Headphones, MessageSquare } from 'lucide-react';
 import NPSFiltersComponent, { NPSFilters } from '../components/NPSFilters';
 import useDebounce from '../hooks/useDebounce';
+import { Layout, PageHeader } from '../components/layout';
 
 type NPSFeedback = {
   id: string;
@@ -21,6 +21,16 @@ type NPSFeedback = {
   user_id: string;
   session_id: string;
   url: string | null;
+  campaign_id?: string | null;
+};
+
+type NPSCampaign = {
+  id: string;
+  name: string;
+  description?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  is_active: boolean;
 };
 
 // Interface para a palavra na nuvem
@@ -37,15 +47,34 @@ function Dashboard() {
   const [filters, setFilters] = React.useState<NPSFilters>({
     profile: '',
     url: '',
-    category: ''
+    category: '',
+    campaignId: ''
   });
   
   // Estado separado para o input da URL (sem debounce)
   const [urlInput, setUrlInput] = React.useState('');
-  
+
   // Debounce da URL com delay de 500ms
   const debouncedUrl = useDebounce(urlInput, 500);
-  
+
+  // Buscar campanhas para popular o seletor
+  const { data: campaigns } = useQuery({
+    queryKey: ['nps-campaigns'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('nps_campaigns')
+        .select('*')
+        .order('start_date', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar campanhas de NPS:', error);
+        throw error;
+      }
+
+      return (data || []) as NPSCampaign[];
+    },
+  });
+
   // Filtros efetivos que são usados na query
   const effectiveFilters = React.useMemo(() => ({
     ...filters,
@@ -67,6 +96,15 @@ function Dashboard() {
       // Aplicar filtro de URL (ilike para busca case-insensitive que contém)
       if (effectiveFilters.url) {
         query = query.ilike('url', `%${effectiveFilters.url}%`);
+      }
+
+      // Aplicar filtro de campanha (server-side)
+      if (effectiveFilters.campaignId) {
+        if (effectiveFilters.campaignId === 'none') {
+          query = query.is('campaign_id', null);
+        } else {
+          query = query.eq('campaign_id', effectiveFilters.campaignId);
+        }
       }
 
       const { data: nps_feedback, error } = await query;
@@ -113,7 +151,8 @@ function Dashboard() {
     setFilters({
       profile: newFilters.profile,
       category: newFilters.category,
-      url: newFilters.url // Este valor não é usado diretamente, mas mantemos por compatibilidade
+      url: newFilters.url, // Mantido para compatibilidade
+      campaignId: newFilters.campaignId || ''
     });
     // Atualizar o input da URL separadamente
     setUrlInput(newFilters.url);
@@ -123,11 +162,12 @@ function Dashboard() {
     setFilters({
       profile: '',
       url: '',
-      category: ''
+      category: '',
+      campaignId: ''
     });
     setUrlInput(''); // Limpar também o input da URL
   };
-  
+
   const getScoreDistribution = (data: NPSFeedback[]) => {
     if (!data?.length) return [];
     
@@ -476,97 +516,38 @@ function Dashboard() {
 
   const npsScore = calculateNPS(feedbacks || []);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/login';
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 z-10 w-64 bg-white shadow-lg">
-        <div className="flex flex-col h-full">
-          <div className="px-6 pt-8 pb-6 border-b border-gray-200">
-            <div className="flex items-center">
-              <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center mr-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="w-5 h-5 text-primary-600"
-                >
-                  <path d="M4.5 6.375a4.125 4.125 0 118.25 0 4.125 4.125 0 01-8.25 0zM14.25 8.625a3.375 3.375 0 116.75 0 3.375 3.375 0 01-6.75 0zM1.5 19.125a7.125 7.125 0 0114.25 0v.003l-.001.119a.75.75 0 01-.363.63 13.067 13.067 0 01-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 01-.364-.63l-.001-.122zM17.25 19.128l-.001.144a2.25 2.25 0 01-.233.96 10.088 10.088 0 005.06-1.01.75.75 0 00.42-.643 4.875 4.875 0 00-6.957-4.611 8.586 8.586 0 011.71 5.157v.003z" />
-                </svg>
-              </div>
-              <h1 className="text-xl font-bold text-gray-900">iHelp NPS</h1>
-            </div>
-          </div>
-          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-            <a
-              href="#"
-              className="flex items-center px-2 py-2 text-sm font-medium text-white bg-primary rounded-md group"
-            >
-              <BarChart3 className="mr-3 h-5 w-5 flex-shrink-0" />
-              Dashboard
-            </a>
-            <a
-              href="#"
-              className="flex items-center px-2 py-2 text-sm font-medium text-gray-600 hover:bg-primary-50 hover:text-primary rounded-md group"
-            >
-              <Users className="mr-3 h-5 w-5 flex-shrink-0" />
-              Customers
-            </a>
-            <a
-              href="/empresas"
-              className="flex items-center px-2 py-2 text-sm font-medium text-gray-600 hover:bg-primary-50 hover:text-primary rounded-md group"
-            >
-              <Building className="mr-3 h-5 w-5 flex-shrink-0" />
-              Empresas
-            </a>
-          </nav>
-          <div className="p-4 border-t border-gray-200">
-            <button
-              onClick={handleLogout}
-              className="flex items-center w-full px-2 py-2 text-sm font-medium text-gray-600 hover:bg-primary-50 hover:text-primary rounded-md group"
-            >
-              <LogOut className="mr-3 h-5 w-5 flex-shrink-0" />
-              Sign out
-            </button>
+    <Layout>
+      <PageHeader
+        title="Dashboard NPS"
+        description="Visão geral das métricas de Net Promoter Score"
+        actions={
+          <button
+            onClick={exportToCSV}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-600 transition-colors shadow-sm"
+          >
+            <Download className="h-4 w-4" />
+            Exportar CSV
+          </button>
+        }
+      />
+
+      {/* Filtros */}
+      <NPSFiltersComponent
+        filters={{ ...filters, url: urlInput }}
+        onFiltersChange={handleFiltersChange}
+        onClearFilters={handleClearFilters}
+        campaignOptions={campaigns || []}
+      />
+      
+      {/* NPS GERAL */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold text-gray-900">NPS Geral</h2>
+          <div className="p-2 bg-primary-50 rounded-lg">
+            <Activity className="h-5 w-5 text-primary-600" />
           </div>
         </div>
-      </div>
-
-      {/* Main content */}
-      <div className="ml-64 p-8 mt-16 mr-8">
-        <header className="bg-white shadow">
-          <div className="flex justify-between items-center px-8 py-6">
-            <h1 className="text-2xl font-bold text-gray-900">NPS Dashboard</h1>
-            <button
-              onClick={exportToCSV}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-600 transition-colors shadow-sm"
-            >
-              <Download size={18} />
-              Export CSV
-            </button>
-          </div>
-        </header>
-
-        <main className="p-8">
-          {/* Filtros */}
-          <NPSFiltersComponent
-            filters={{ ...filters, url: urlInput }} // Usar o urlInput para exibir o valor atual
-            onFiltersChange={handleFiltersChange}
-            onClearFilters={handleClearFilters}
-          />
-          
-          {/* NPS GERAL */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-medium text-gray-900">NPS GERAL</h2>
-              <div className="p-2 bg-primary-50 rounded-md">
-                <Activity className="h-5 w-5 text-primary-600" />
-              </div>
-            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
               <div className="bg-gray-50 p-4 rounded-lg">
@@ -1209,9 +1190,7 @@ function Dashboard() {
               </table>
             </div>
           </div>
-        </main>
-      </div>
-    </div>
+    </Layout>
   );
 }
 
