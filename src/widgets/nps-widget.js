@@ -1,5 +1,5 @@
 /**
- * iHelp NPS Widget v1.4
+ * iHelp NPS Widget v1.5
  * 
  * A lightweight, embeddable NPS (Net Promoter Score) widget
  * that can be added to any website with a simple script tag.
@@ -140,15 +140,18 @@ var initNPSWidget;
               Authorization: `Bearer ${this.config.apiKey}`
             }
           });
-          if (campaignResp.ok) {
-            const [campaign] = await campaignResp.json();
-            if (!campaign || campaign.is_active === false) {
-              console.log('Widget NPS: campanha inativa, não exibir.');
-              return true;
-            }
+          if (!campaignResp.ok) {
+            console.warn('Widget NPS: não foi possível verificar campanha, pulando widget por segurança.', campaignResp.status);
+            return true;
+          }
+          const [campaign] = await campaignResp.json();
+          if (!campaign || campaign.is_active === false) {
+            console.log('Widget NPS: campanha inativa, não exibir.');
+            return true;
           }
         } catch (error) {
           console.error('Erro ao verificar campanha ativa:', error);
+          return true;
         }
       }
 
