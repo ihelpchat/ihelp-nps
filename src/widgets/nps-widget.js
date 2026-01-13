@@ -1,5 +1,5 @@
 /**
- * iHelp NPS Widget v1.5
+ * iHelp NPS Widget v1.6
  * 
  * A lightweight, embeddable NPS (Net Promoter Score) widget
  * that can be added to any website with a simple script tag.
@@ -128,31 +128,61 @@ var initNPSWidget;
 
     // Verifica se o widget deve ser pulado com base no Supabase ou localStorage
     async shouldSkipWidget() {
-      // Verificar se a campanha associada está ativa
-      if (this.config.campaignId && this.config.apiKey && this.config.campaignsApiUrl) {
-        try {
-          const campaignUrl = `${this.config.campaignsApiUrl}?select=is_active&id=eq.${encodeURIComponent(this.config.campaignId)}`;
-          const campaignResp = await fetch(campaignUrl, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              apikey: this.config.apiKey,
-              Authorization: `Bearer ${this.config.apiKey}`
-            }
-          });
-          if (!campaignResp.ok) {
-            console.warn('Widget NPS: não foi possível verificar campanha, pulando widget por segurança.', campaignResp.status);
-            return true;
+      // Verificar campanhas - sempre precisa ter uma campanha ativa para exibir
+      if (!this.config.campaignsApiUrl || !this.config.apiKey) {
+        console.warn('Widget NPS: campaignsApiUrl/apiKey ausente. Pulando exibição.');
+        return true;
+      }
+
+      try {
+        let campaignUrl;
+        
+        if (this.config.campaignId) {
+          // Se campaignId foi passado, verifica essa campanha específica
+          campaignUrl = `${this.config.campaignsApiUrl}?select=id,is_active&id=eq.${encodeURIComponent(this.config.campaignId)}`;
+          console.log('Widget NPS: checando campanha específica em', campaignUrl);
+        } else {
+          // Se não passou campaignId, busca qualquer campanha ativa
+          campaignUrl = `${this.config.campaignsApiUrl}?select=id,is_active&is_active=eq.true&limit=1`;
+          console.log('Widget NPS: buscando campanha ativa automaticamente em', campaignUrl);
+        }
+
+        const campaignResp = await fetch(campaignUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: this.config.apiKey,
+            Authorization: `Bearer ${this.config.apiKey}`
           }
-          const [campaign] = await campaignResp.json();
-          if (!campaign || campaign.is_active === false) {
-            console.log('Widget NPS: campanha inativa, não exibir.');
-            return true;
-          }
-        } catch (error) {
-          console.error('Erro ao verificar campanha ativa:', error);
+        });
+
+        if (!campaignResp.ok) {
+          console.warn('Widget NPS: não foi possível verificar campanha, pulando widget por segurança.', campaignResp.status);
           return true;
         }
+
+        const campaigns = await campaignResp.json();
+        const campaign = campaigns[0];
+
+        if (!campaign) {
+          console.log('Widget NPS: nenhuma campanha encontrada, não exibir.');
+          return true;
+        }
+
+        if (campaign.is_active === false) {
+          console.log('Widget NPS: campanha inativa, não exibir.', campaign);
+          return true;
+        }
+
+        // Salvar o campaignId para uso posterior (envio de feedback)
+        if (!this.config.campaignId) {
+          this.config.campaignId = campaign.id;
+          console.log('Widget NPS: usando campanha ativa encontrada:', campaign.id);
+        }
+
+      } catch (error) {
+        console.error('Erro ao verificar campanha ativa:', error);
+        return true;
       }
 
       // Verificar no Supabase se o usuário já avaliou ou fechou o widget recentemente
